@@ -27,6 +27,38 @@
         </div>
       </header>
 
+      <!-- 오늘 요약 대시보드 -->
+      <div class="dashboard-bar" id="dashboardBar">
+        <div class="dash-card dash-greet">
+          <div class="dash-icon">👋</div>
+          <div class="dash-info">
+            <div class="dash-label" id="dashGreeting">안녕하세요</div>
+            <div class="dash-value" id="dashName">...</div>
+          </div>
+        </div>
+        <div class="dash-card dash-cal">
+          <div class="dash-icon">📅</div>
+          <div class="dash-info">
+            <div class="dash-label">오늘 일정</div>
+            <div class="dash-value" id="dashTodayEvents">-</div>
+          </div>
+        </div>
+        <div class="dash-card dash-mail">
+          <div class="dash-icon">📧</div>
+          <div class="dash-info">
+            <div class="dash-label">미읽은 메일</div>
+            <div class="dash-value" id="dashUnread">-</div>
+          </div>
+        </div>
+        <div class="dash-card dash-clock">
+          <div class="dash-icon">🕐</div>
+          <div class="dash-info">
+            <div class="dash-label" id="dashDateLabel">-</div>
+            <div class="dash-value" id="dashClock">--:--</div>
+          </div>
+        </div>
+      </div>
+
       <div class="main-layout">
         <!-- 메모 섹션 -->
         <div class="memo-col">
@@ -167,12 +199,23 @@
         <div class="drive-card">
           <div class="drive-card-header">
             <span class="drive-title">📁 Google Drive Work Space</span>
-            <button class="drive-recent-btn" id="driveRecentBtn" onclick="fetchRecentFiles()">최근 파일</button>
+            <div class="drive-header-btns">
+              <button class="drive-upload-btn" onclick="document.getElementById('driveUploadInput').click()" title="파일 업로드">⬆ 업로드</button>
+              <input type="file" id="driveUploadInput" multiple style="display:none" onchange="onDriveUploadSelect()">
+              <button class="drive-recent-btn" id="driveRecentBtn" onclick="fetchRecentFiles()">최근 파일</button>
+            </div>
           </div>
           <div class="drive-search-bar" id="driveSearchBar">
             <input type="text" id="driveSearchInput" placeholder="파일명 입력해주세요."
               onkeydown="if(event.key==='Enter')searchDriveFiles()" />
             <button onclick="searchDriveFiles()">검색</button>
+          </div>
+          <div class="drive-dropzone" id="driveDropzone"
+               ondragover="onDriveDropzoneOver(event)"
+               ondragleave="onDriveDropzoneLeave(event)"
+               ondrop="onDriveDropzoneDrop(event)"
+               onclick="document.getElementById('driveUploadInput').click()">
+            📁 파일을 드래그하거나 클릭하여 Drive에 업로드
           </div>
           <div id="driveStatus" class="drive-status">Google 로그인 후 이용 가능합니다</div>
           <div id="driveList"></div>
@@ -314,6 +357,20 @@
           <button class="draft-list-close" onclick="closeDraftListModal()">×</button>
         </div>
         <div id="draftListContent" class="draft-list-content"></div>
+      </div>
+    </div>
+
+    <!-- Drive 미리보기 모달 -->
+    <div id="drivePreviewModal" class="drive-preview-overlay" onclick="closeDrivePreview(event)" style="display:none">
+      <div class="drive-preview-box">
+        <div class="drive-preview-header">
+          <span id="drivePreviewName" class="drive-preview-name"></span>
+          <div class="drive-preview-header-btns">
+            <a id="drivePreviewOpenLink" href="#" target="_blank" rel="noopener" class="drive-preview-open-link">Drive에서 열기 ↗</a>
+            <button class="drive-preview-close" onclick="closeDrivePreview()">×</button>
+          </div>
+        </div>
+        <div id="drivePreviewContent" class="drive-preview-content"></div>
       </div>
     </div>
 

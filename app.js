@@ -903,6 +903,7 @@ async function fetchCalendarEvents(year, month) {
     gcalEvents = data.items || [];
     renderCalendar();
     renderScheduleList();
+    updateDashboardTodayEvents();
   } catch {
     document.getElementById("scheduleList").innerHTML =
       `<p class="schedule-empty">일정을 불러올 수 없습니다</p>`;
@@ -988,6 +989,7 @@ async function fetchEmails() {
     );
 
     status.textContent = `최근 ${details.length}개 메일`;
+    fetchDashboardUnread();
     list.innerHTML = details
       .map((msg) => {
         const h = (name) =>
@@ -1900,14 +1902,17 @@ function initDriveCard() {
   fetchRecentFiles();
 }
 
+let currentDriveFiles = [];
+
 function renderDriveFiles(files) {
+  currentDriveFiles = files || [];
   const list = document.getElementById("driveList");
-  if (!files?.length) {
+  if (!currentDriveFiles.length) {
     list.innerHTML = `<p class="drive-empty">파일이 없습니다</p>`;
     return;
   }
-  list.innerHTML = `<div class="drive-list">${files
-    .map((f) => {
+  list.innerHTML = `<div class="drive-list">${currentDriveFiles
+    .map((f, i) => {
       const icon = driveFileIcon(f.mimeType);
       const date = (() => {
         const d = new Date(f.modifiedTime);
@@ -1921,16 +1926,94 @@ function renderDriveFiles(files) {
             });
       })();
       return `
-      <a class="drive-item" href="${f.webViewLink}" target="_blank" rel="noopener">
+      <div class="drive-item">
         <span class="drive-item-icon">${icon}</span>
-        <div class="drive-item-info">
+        <div class="drive-item-info" onclick="openDrivePreview(${i})">
           <div class="drive-item-name" title="${f.name}">${f.name}</div>
           <div class="drive-item-date">${date}</div>
         </div>
-        <span class="drive-item-open">열기 ↗</span>
-      </a>`;
+        <div class="drive-item-actions">
+          <button class="drive-preview-btn" onclick="openDrivePreview(${i})">미리보기</button>
+          <a class="drive-open-link" href="${f.webViewLink}" target="_blank" rel="noopener">열기 ↗</a>
+        </div>
+      </div>`;
     })
     .join("")}</div>`;
+}
+
+// ── Drive 업로드 ──
+function onDriveUploadSelect() {
+  const input = document.getElementById("driveUploadInput");
+  Array.from(input.files).forEach(f => uploadDriveFile(f));
+  input.value = "";
+}
+
+async function uploadDriveFile(file) {
+  const status = document.getElementById("driveStatus");
+  status.textContent = `"${file.name}" 업로드 중...`;
+
+  const metadata = { name: file.name };
+  const form = new FormData();
+  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
+  form.append("file", file);
+
+  try {
+    const res = await fetch(
+      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",
+      { method: "POST", headers: { Authorization: `Bearer ${gmailToken}` }, body: form }
+    );
+    if (res.status === 401) { handleTokenExpired(); return; }
+    if (!res.ok) {
+      const err = await res.json();
+      alert("업로드 실패: " + (err.error?.message || "알 수 없는 오류"));
+      return;
+    }
+    const uploaded = await res.json();
+    status.textContent = `"${uploaded.name}" 업로드 완료!`;
+    fetchRecentFiles();
+  } catch {
+    alert("업로드 중 오류가 발생했습니다.");
+  }
+}
+
+function onDriveDropzoneOver(e) {
+  e.preventDefault();
+  document.getElementById("driveDropzone").classList.add("drag-over");
+}
+function onDriveDropzoneLeave() {
+  document.getElementById("driveDropzone").classList.remove("drag-over");
+}
+function onDriveDropzoneDrop(e) {
+  e.preventDefault();
+  document.getElementById("driveDropzone").classList.remove("drag-over");
+  Array.from(e.dataTransfer.files).forEach(f => uploadDriveFile(f));
+}
+
+// ── Drive 미리보기 ──
+function openDrivePreview(idx) {
+  const f = currentDriveFiles[idx];
+  if (!f) return;
+
+  document.getElementById("drivePreviewName").textContent = f.name;
+  document.getElementById("drivePreviewOpenLink").href = f.webViewLink;
+
+  const content = document.getElementById("drivePreviewContent");
+
+  if (f.mimeType.startsWith("image/")) {
+    content.innerHTML = `<div class="drive-preview-img-wrap">
+      <img src="https://drive.google.com/thumbnail?id=${f.id}&sz=w1200" alt="${f.name}">
+    </div>`;
+  } else {
+    content.innerHTML = `<iframe src="https://drive.google.com/file/d/${f.id}/preview" allowfullscreen></iframe>`;
+  }
+
+  document.getElementById("drivePreviewModal").style.display = "flex";
+}
+
+function closeDrivePreview(e) {
+  if (e && e.target !== document.getElementById("drivePreviewModal")) return;
+  document.getElementById("drivePreviewContent").innerHTML = "";
+  document.getElementById("drivePreviewModal").style.display = "none";
 }
 
 async function fetchRecentFiles() {
@@ -2006,12 +2089,57 @@ selectDate(
   ),
 );
 
+// ── 오늘 요약 대시보드 ──
+function initDashboard() {
+  const h = new Date().getHours();
+  const greeting = h < 6 ? "새벽에도 열심이시네요" : h < 12 ? "좋은 아침이에요" : h < 18 ? "안녕하세요" : "오늘 하루 수고하셨어요";
+  document.getElementById("dashGreeting").textContent = greeting;
+  document.getElementById("dashName").textContent = currentUserName + "님";
+  updateDashboardClock();
+  setInterval(updateDashboardClock, 1000);
+}
+
+function updateDashboardClock() {
+  const now = new Date();
+  document.getElementById("dashClock").textContent =
+    now.toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  document.getElementById("dashDateLabel").textContent =
+    now.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "short" });
+}
+
+function updateDashboardTodayEvents() {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const count = gcalEvents.filter(e => {
+    const start = e.start?.date || e.start?.dateTime?.slice(0, 10);
+    const end = e.end?.date || e.end?.dateTime?.slice(0, 10);
+    if (!start) return false;
+    if (end && end > todayStr && start <= todayStr) return true;
+    return start === todayStr;
+  }).length;
+  document.getElementById("dashTodayEvents").textContent = count + "개";
+}
+
+async function fetchDashboardUnread() {
+  try {
+    const res = await fetch(
+      "https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX",
+      { headers: { Authorization: `Bearer ${gmailToken}` } }
+    );
+    if (!res.ok) return;
+    const data = await res.json();
+    const unread = data.messagesUnread ?? 0;
+    document.getElementById("dashUnread").textContent = unread + "개";
+  } catch { /* 무시 */ }
+}
+
 // 페이지 로드 시 자동 초기화
 if (gmailToken) {
   fetchUserInfo();
   initDriveCard();
   fetchCalendarEvents(calYear, calMonth);
   fetchEmails();
+  initDashboard();
+  fetchDashboardUnread();
 }
 
 // ── Gemini 채팅 ──

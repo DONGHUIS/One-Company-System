@@ -533,6 +533,73 @@ select {
   border-radius: 3px;
 }
 
+/* ── 오늘 요약 대시보드 ── */
+.dashboard-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+  animation: fadeUp 0.5s ease;
+}
+
+.dash-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.dash-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.09);
+}
+
+.dash-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.dash-info {
+  min-width: 0;
+}
+
+.dash-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-value {
+  font-family: "Black Han Sans", sans-serif;
+  font-size: 1.15rem;
+  color: var(--text);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dash-greet  { border-left: 3px solid var(--accent); }
+.dash-cal    { border-left: 3px solid #60a5fa; }
+.dash-mail   { border-left: 3px solid #f87171; }
+.dash-clock  { border-left: 3px solid var(--accent2); }
+
+.dash-greet  .dash-value { font-size: 0.95rem; font-family: "Gowun Dodum", sans-serif; }
+.dash-clock  .dash-value { font-size: 1rem; font-family: "Gowun Dodum", sans-serif; letter-spacing: 0.05em; }
+
+@media (max-width: 700px) {
+  .dashboard-bar { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* ── 메인 2컬럼 레이아웃 ── */
 .main-layout {
   display: grid;
@@ -2422,4 +2489,163 @@ select {
   color: var(--text-muted);
   font-size: 0.8rem;
   padding: 20px 0;
+}
+
+/* Drive 헤더 버튼 묶음 */
+.drive-header-btns {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* 업로드 버튼 */
+.drive-upload-btn {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--accent3);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.drive-upload-btn:hover { background: rgba(52, 211, 153, 0.22); }
+
+/* 업로드 드롭존 */
+.drive-dropzone {
+  border: 1.5px dashed var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  cursor: pointer;
+  margin-bottom: 8px;
+  transition: background 0.15s, border-color 0.15s;
+  user-select: none;
+}
+.drive-dropzone:hover { background: rgba(52, 211, 153, 0.06); border-color: var(--accent3); }
+.drive-dropzone.drag-over { background: rgba(52, 211, 153, 0.12); border-color: var(--accent3); color: var(--accent3); }
+
+/* Drive 아이템 액션 버튼 */
+.drive-item-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.drive-preview-btn {
+  background: rgba(52, 211, 153, 0.1);
+  color: var(--accent3);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 5px;
+  padding: 3px 8px;
+  font-size: 0.67rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.drive-preview-btn:hover { background: rgba(52, 211, 153, 0.22); }
+.drive-open-link {
+  font-size: 0.67rem;
+  color: var(--accent3);
+  text-decoration: none;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+.drive-open-link:hover { opacity: 1; }
+
+/* Drive 미리보기 모달 */
+.drive-preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(4px);
+}
+.drive-preview-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 900px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 16px 50px rgba(0,0,0,0.2);
+}
+.drive-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  gap: 10px;
+}
+.drive-preview-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.drive-preview-header-btns {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.drive-preview-open-link {
+  font-size: 0.75rem;
+  color: var(--accent3);
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid rgba(52,211,153,0.3);
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+.drive-preview-open-link:hover { background: rgba(52,211,153,0.1); }
+.drive-preview-close {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--text-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.drive-preview-close:hover { background: rgba(0,0,0,0.08); }
+.drive-preview-content {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+.drive-preview-content iframe {
+  width: 100%;
+  height: 100%;
+  min-height: 500px;
+  border: none;
+}
+.drive-preview-img-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  min-height: 300px;
+}
+.drive-preview-img-wrap img {
+  max-width: 100%;
+  max-height: 75vh;
+  border-radius: 8px;
+  object-fit: contain;
 }

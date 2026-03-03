@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>메모 앱</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Black+Han+Sans&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="bg-blur b1"></div>
+    <div class="bg-blur b2"></div>
+    <div class="bg-blur b3"></div>
+
+    <div class="container">
+      <header>
+        <button class="header-logout-btn" onclick="logout()">로그아웃</button>
+        <div class="logo">📝</div>
+        <h1>MY WORK SPACE</h1>
+        <p class="subtitle">업무를 편하게 One-Stop 처리</p>
+        <div class="weather-widget">
+          <span id="weatherContent" class="weather-loading">날씨 불러오는 중...</span>
+        </div>
+      </header>
+
+      <div class="main-layout">
+        <!-- 메모 섹션 -->
+        <div class="memo-col">
+          <!-- 입력 카드 -->
+          <div class="input-card">
+            <div class="field">
+              <label>제목</label>
+              <input type="text" id="titleInput" placeholder="메모 제목" />
+            </div>
+            <div class="field">
+              <label>내용</label>
+              <textarea id="contentInput" placeholder="내용을 입력하세요..."></textarea>
+            </div>
+            <div class="input-row">
+              <div class="field">
+                <label>태그</label>
+                <input type="text" id="tagInput" placeholder="예: 업무, 개인, 공부" />
+              </div>
+              <button id="addBtn" onclick="addMemo()">
+                <span>추가</span>
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- 검색 + 필터 -->
+          <div class="filter-bar" id="filterBar">
+            <div class="search-wrap" id="searchWrap">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input type="text" id="searchInput" placeholder="메모명을 입력해주세요." />
+            </div>
+            <select id="tagFilter">
+              <option value="전체">전체 태그</option>
+            </select>
+            <button class="btn-trash-toggle" id="trashToggleBtn" onclick="toggleTrashView()">🗑 휴지통</button>
+          </div>
+
+          <!-- 메모 목록 -->
+          <div id="memoList"></div>
+
+          <!-- 휴지통 목록 -->
+          <div id="trashList" style="display:none"></div>
+        </div>
+
+        <!-- 일정 섹션 -->
+        <div class="schedule-col">
+          <div class="schedule-card">
+            <!-- 캘린더 헤더 -->
+            <div class="cal-header">
+              <button class="cal-nav" id="calPrev">&#8249;</button>
+              <span id="calTitle"></span>
+              <button class="cal-nav" id="calNext">&#8250;</button>
+            </div>
+
+            <!-- 요일 레이블 (날짜 그리드와 분리) -->
+            <div class="cal-labels">
+              <span>일</span><span>월</span><span>화</span>
+              <span>수</span><span>목</span><span>금</span><span>토</span>
+            </div>
+            <!-- 캘린더 그리드 (날짜 셀만) -->
+            <div class="cal-grid" id="calGrid"></div>
+
+            <!-- 선택된 날짜 일정 -->
+            <div class="schedule-list-area">
+              <div class="schedule-list-header">
+                <span id="selectedDateLabel">날짜를 선택하세요</span>
+                <button class="btn-add-schedule" id="btnAddSchedule" onclick="toggleAddForm()" style="display:none">+ 추가</button>
+              </div>
+
+              <!-- 일정 추가 폼 -->
+              <div class="add-schedule-form" id="addScheduleForm" style="display:none">
+                <input type="text" id="scheduleTitle" placeholder="일정명을 입력해주세요." />
+                <input type="text" id="scheduleLocation" placeholder="장소(회의실)" />
+                <div class="schedule-date-row">
+                  <input type="date" id="scheduleStartDate" class="schedule-end-date" />
+                  <span class="time-range-sep">~</span>
+                  <input type="date" id="scheduleEndDate" class="schedule-end-date" />
+                </div>
+                <div class="schedule-time-row">
+                  <div class="time-select-wrap">
+                    <select id="scheduleStartHour" class="time-sel"></select>
+                    <span class="time-colon">:</span>
+                    <select id="scheduleStartMin" class="time-sel"></select>
+                  </div>
+                  <span class="time-range-sep">~</span>
+                  <div class="time-select-wrap">
+                    <select id="scheduleEndHour" class="time-sel"></select>
+                    <span class="time-colon">:</span>
+                    <select id="scheduleEndMin" class="time-sel"></select>
+                  </div>
+                  <button class="btn-save-schedule" onclick="saveSchedule()">저장</button>
+                </div>
+              </div>
+
+              <!-- 일정 목록 -->
+              <div id="scheduleList"></div>
+            </div>
+          </div>
+        </div>
+        </div>
+
+        <!-- Gmail 카드 -->
+        <div class="gmail-card">
+          <div class="gmail-card-header">
+            <span class="gmail-title">📧 받은 메일함</span>
+            <div class="gmail-header-btns">
+              <button class="gmail-compose-btn" onclick="openNewCompose()" title="새 메일 작성">✏️ 새 메일</button>
+              <button class="gmail-draft-btn" onclick="showDraftListModal()" title="임시저장함">📝 임시저장</button>
+              <button class="gmail-sig-btn" onclick="showSignatureModal()" title="서명 관리">✍️ 서명</button>
+              <button class="gmail-refresh-btn" id="gmailRefreshBtn" onclick="fetchEmails()" title="새로고침">↻</button>
+            </div>
+          </div>
+          <div id="gmailStatus" class="gmail-status">메일 불러오는 중...</div>
+          <div id="gmailList"></div>
+        </div>
+
+        <!-- Drive 카드 -->
+        <div class="drive-card">
+          <div class="drive-card-header">
+            <span class="drive-title">📁 Google Drive Work Space</span>
+            <button class="drive-recent-btn" id="driveRecentBtn" onclick="fetchRecentFiles()">최근 파일</button>
+          </div>
+          <div class="drive-search-bar" id="driveSearchBar">
+            <input type="text" id="driveSearchInput" placeholder="파일명 입력해주세요."
+              onkeydown="if(event.key==='Enter')searchDriveFiles()" />
+            <button onclick="searchDriveFiles()">검색</button>
+          </div>
+          <div id="driveStatus" class="drive-status">Google 로그인 후 이용 가능합니다</div>
+          <div id="driveList"></div>
+        </div>
+
+        <footer class="app-footer">
+          <span class="footer-copy">&copy; <span id="footerYear"></span> MY WORK SPACE</span>
+          <span class="footer-sep">·</span>
+          <span class="footer-version">v1.0.0</span>
+          <span class="footer-sep">·</span>
+          <span class="footer-made">Made by Blumn.AI</span>
+        </footer>
+      </div>
+    </div>
+
+    <!-- 일정 상세 모달 -->
+    <div id="scheduleDetailModal" class="sdm-overlay" onclick="closeScheduleDetail(event)" style="display:none">
+      <div class="sdm-box">
+        <button class="sdm-close" onclick="closeScheduleDetail()">×</button>
+        <h3 class="sdm-title" id="sdmTitle"></h3>
+        <div class="sdm-body" id="sdmBody"></div>
+      </div>
+    </div>
+
+    <!-- 메일 상세 모달 -->
+    <div id="emailModal" class="email-modal-overlay" onclick="closeEmailModal(event)" style="display:none">
+      <div class="email-modal">
+        <button class="email-modal-close" onclick="closeEmailModal()">×</button>
+        <div class="email-modal-header">
+          <div class="email-modal-subject" id="emailModalSubject"></div>
+          <div class="email-modal-meta">
+            <span id="emailModalFrom"></span>
+            <span id="emailModalDate"></span>
+          </div>
+        </div>
+        <div class="email-modal-actions">
+          <button class="email-action-btn" onclick="openCompose('reply')">↩ 답장</button>
+          <button class="email-action-btn" onclick="openCompose('forward')">→ 전달</button>
+        </div>
+        <!-- 컴포즈 영역 -->
+        <div class="email-compose-area" id="emailComposeArea" style="display:none">
+          <div id="draftRestoreBar" class="draft-restore-bar" style="display:none">
+            <span>💾 임시저장된 메일이 있습니다</span>
+            <button class="draft-restore-load" onclick="restoreDraft()">불러오기</button>
+            <button class="draft-restore-dismiss" onclick="dismissDraftBar()">무시</button>
+          </div>
+          <div class="compose-row">
+            <label class="compose-label">받는 사람</label>
+            <input type="text" id="composeTo" class="compose-input" placeholder="이메일 주소" />
+          </div>
+          <div class="compose-row">
+            <label class="compose-label">참조</label>
+            <input type="text" id="composeCc" class="compose-input" placeholder="참조 이메일 (여러 명은 쉼표로 구분)" />
+          </div>
+          <div class="compose-row">
+            <label class="compose-label">제목</label>
+            <input type="text" id="composeSubject" class="compose-input" />
+          </div>
+          <!-- 본문 툴바 -->
+          <div class="sig-toolbar" id="composeBodyToolbar">
+            <button type="button" class="sig-tb-btn" id="cbBold"      onclick="composeBodyFormat('bold')"      title="굵게"><b>B</b></button>
+            <button type="button" class="sig-tb-btn" id="cbItalic"    onclick="composeBodyFormat('italic')"    title="기울임"><i>I</i></button>
+            <button type="button" class="sig-tb-btn" id="cbUnderline" onclick="composeBodyFormat('underline')" title="밑줄"><u>U</u></button>
+            <button type="button" class="sig-tb-btn" id="cbStrike"    onclick="composeBodyFormat('strikeThrough')" title="취소선"><s>S</s></button>
+            <span class="sig-tb-sep"></span>
+            <select class="sig-tb-sel" onchange="composeBodyFormat('fontName', this.value)" title="폰트">
+              <option value="">기본 폰트</option>
+              <option value="Arial">Arial</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Courier New">Courier New</option>
+              <option value="Tahoma">Tahoma</option>
+            </select>
+            <select class="sig-tb-sel sig-tb-size" onchange="composeBodyFormat('fontSize', this.value)" title="크기">
+              <option value="1">10px</option>
+              <option value="2">13px</option>
+              <option value="3">16px</option>
+              <option value="4">18px</option>
+              <option value="5">24px</option>
+              <option value="6">32px</option>
+            </select>
+            <span class="sig-tb-sep"></span>
+            <label class="sig-tb-color" title="글자 색상">
+              <span id="cbColorIndicator" class="sig-tb-color-indicator">A</span>
+              <input type="color" id="composeColorPicker" value="#000000"
+                oninput="composeBodyFormat('foreColor', this.value); document.getElementById('cbColorIndicator').style.borderBottom='3px solid '+this.value" />
+            </label>
+            <span class="sig-tb-sep"></span>
+            <button type="button" class="sig-tb-btn" onclick="composeBodyFormat('insertUnorderedList')" title="목록">≡</button>
+            <button type="button" class="sig-tb-btn" onclick="composeBodyFormat('justifyLeft')"   title="왼쪽 정렬">⬛⬛</button>
+            <button type="button" class="sig-tb-btn" onclick="composeBodyFormat('justifyCenter')" title="가운데 정렬">▣</button>
+          </div>
+          <!-- 본문 편집기 -->
+          <div id="composeBody" class="compose-body-editor" contenteditable="true" spellcheck="true"
+               onmouseup="updateComposeBodyToolbar()" onkeyup="updateComposeBodyToolbar()"
+               onpaste="handleComposePaste(event)"></div>
+          <div class="compose-row">
+            <label class="compose-label">서명</label>
+            <select id="composeSignatureSel" class="compose-sig-sel" onchange="onComposeSignatureChange()">
+              <option value="">서명 없음</option>
+            </select>
+          </div>
+          <div class="compose-dropzone" id="composeDropzone"
+               ondragover="onComposeDragOver(event)"
+               ondragleave="onComposeDragLeave(event)"
+               ondrop="onComposeDrop(event)"
+               onclick="document.getElementById('composeAttachInput').click()">
+            <input type="file" id="composeAttachInput" multiple style="display:none" onchange="onAttachmentSelect()" />
+            <span class="compose-dropzone-hint">📎 파일을 드래그하거나 클릭하여 선택</span>
+            <div id="composeAttachPreview" class="compose-attach-preview" onclick="event.stopPropagation()" style="display:none"></div>
+          </div>
+          <div class="compose-btns">
+            <button class="compose-send-btn" onclick="sendComposedEmail()">전송</button>
+            <button class="compose-cancel-btn" onclick="tryCloseCompose()">취소</button>
+          </div>
+        </div>
+        <div class="email-modal-attachments" id="emailModalAttachments" style="display:none"></div>
+        <div class="email-modal-body" id="emailModalBody"></div>
+      </div>
+    </div>
+
+    <!-- 임시저장 확인 다이얼로그 -->
+    <div id="draftConfirmDialog" class="draft-dialog-overlay" style="display:none">
+      <div class="draft-dialog-box">
+        <p class="draft-dialog-msg">작성 중인 메일을 어떻게 할까요?</p>
+        <div class="draft-dialog-btns">
+          <button class="draft-btn-save" onclick="doCloseCompose(true)">💾 임시저장</button>
+          <button class="draft-btn-discard" onclick="doCloseCompose(false)">🗑 삭제</button>
+          <button class="draft-btn-cancel" onclick="hideDraftDialog()">✏️ 계속 작성</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 임시저장함 목록 모달 -->
+    <div id="draftListModal" class="draft-list-overlay" onclick="closeDraftListModal(event)" style="display:none">
+      <div class="draft-list-box">
+        <div class="draft-list-header">
+          <span>📝 임시저장함</span>
+          <button class="draft-list-close" onclick="closeDraftListModal()">×</button>
+        </div>
+        <div id="draftListContent" class="draft-list-content"></div>
+      </div>
+    </div>
+
+    <!-- 서명 관리 모달 -->
+    <div id="signatureModal" class="sig-modal-overlay" onclick="closeSignatureModal(event)" style="display:none">
+      <div class="sig-modal-box">
+        <div class="sig-modal-header">
+          <span>✍️ 서명 관리</span>
+          <button class="sig-modal-close" onclick="closeSignatureModal()">×</button>
+        </div>
+        <div class="sig-modal-body">
+          <button class="sig-add-btn" onclick="startAddSignature()">+ 새 서명 추가</button>
+          <div id="sigEditArea" class="sig-edit-area" style="display:none">
+            <input type="hidden" id="sigEditId" />
+            <input type="text" id="sigEditName" class="sig-name-input" placeholder="서명 이름 (예: 기본 서명)" />
+            <!-- 리치 텍스트 툴바 -->
+            <div class="sig-toolbar" id="sigToolbar">
+              <button type="button" class="sig-tb-btn" id="tbBold"      onclick="sigFormat('bold')"      title="굵게"><b>B</b></button>
+              <button type="button" class="sig-tb-btn" id="tbItalic"    onclick="sigFormat('italic')"    title="기울임"><i>I</i></button>
+              <button type="button" class="sig-tb-btn" id="tbUnderline" onclick="sigFormat('underline')" title="밑줄"><u>U</u></button>
+              <span class="sig-tb-sep"></span>
+              <select class="sig-tb-sel" id="tbFont" onchange="sigFormat('fontName', this.value)" title="폰트">
+                <option value="">기본 폰트</option>
+                <option value="Arial">Arial</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Verdana">Verdana</option>
+                <option value="Courier New">Courier New</option>
+                <option value="Tahoma">Tahoma</option>
+              </select>
+              <select class="sig-tb-sel sig-tb-size" id="tbSize" onchange="sigFormat('fontSize', this.value)" title="크기">
+                <option value="1">10px</option>
+                <option value="2">13px</option>
+                <option value="3">16px</option>
+                <option value="4">18px</option>
+                <option value="5">24px</option>
+                <option value="6">32px</option>
+              </select>
+              <span class="sig-tb-sep"></span>
+              <label class="sig-tb-color" title="글자 색상">
+                <span id="tbColorIndicator" class="sig-tb-color-indicator">A</span>
+                <input type="color" id="sigColorPicker" value="#000000" oninput="sigFormat('foreColor', this.value); document.getElementById('tbColorIndicator').style.borderBottom='3px solid '+this.value" />
+              </label>
+              <span class="sig-tb-sep"></span>
+              <label class="sig-tb-img-btn" title="이미지 삽입">
+                🖼 이미지
+                <input type="file" accept="image/*" style="display:none" onchange="sigInsertImage(this)" />
+              </label>
+            </div>
+            <div id="sigEditContent" class="sig-editor" contenteditable="true" spellcheck="false"
+                 onmouseup="updateSigToolbar()" onkeyup="updateSigToolbar()"></div>
+            <div class="sig-edit-btns">
+              <button class="sig-save-btn" onclick="saveSignature()">저장</button>
+              <button class="sig-cancel-edit-btn" onclick="cancelSigEdit()">취소</button>
+            </div>
+          </div>
+          <div id="sigList" class="sig-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gemini 채팅 플로팅 버튼 -->
+    <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="AI 채팅">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+    </button>
+
+    <!-- Gemini 채팅 팝업 -->
+    <div class="chat-popup" id="chatPopup" style="display:none">
+      <div class="chat-popup-header">
+        <span>✨ Gemini AI</span>
+        <button class="chat-popup-close" onclick="toggleChat()">×</button>
+      </div>
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input-row">
+        <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendChat(); }" />
+        <button class="chat-send-btn" onclick="sendChat()">전송</button>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>

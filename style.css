@@ -2032,7 +2032,7 @@ select {
 /* 리치 텍스트 본문 편집기 */
 .compose-body-editor {
   width: 100%;
-  min-height: 140px;
+  min-height: 280px;
   overflow-y: visible;
   padding: 10px 12px;
   border: 1px solid var(--border);

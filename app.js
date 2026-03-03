@@ -1852,6 +1852,7 @@ async function sendComposedEmail() {
     }
 
     closeCompose();
+    closeEmailModal();
     alert("전송 완료!");
   } catch {
     alert("전송 중 오류가 발생했습니다.");

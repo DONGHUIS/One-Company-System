@@ -1640,6 +1640,205 @@ select {
   border-left-color: var(--accent2);
 }
 
+/* ── Google Tasks 카드 ── */
+.tasks-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+  margin-top: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.07);
+  animation: fadeUp 0.5s ease;
+}
+
+.tasks-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 8px;
+}
+
+.tasks-title {
+  font-family: "Black Han Sans", sans-serif;
+  font-size: 0.88rem;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.tasks-header-btns {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tasks-list-sel {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-family: "Gowun Dodum", sans-serif;
+  padding: 3px 6px;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  outline: none;
+}
+
+.tasks-refresh-btn {
+  background: rgba(139,92,246,0.1);
+  color: var(--accent);
+  border: 1px solid rgba(139,92,246,0.2);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.tasks-refresh-btn:hover { background: rgba(139,92,246,0.2); }
+
+.tasks-status {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.tasks-list {
+  max-height: 280px;
+  overflow-y: auto;
+  margin-bottom: 10px;
+}
+
+.tasks-empty {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  padding: 24px 0;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 6px;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+.task-item:hover { background: var(--surface2); }
+.task-item.task-done { opacity: 0.5; }
+
+.task-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: transparent;
+  color: white;
+  font-size: 0.65rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+}
+.task-check.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.task-check:hover { border-color: var(--accent); }
+
+.task-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.task-title {
+  font-size: 0.82rem;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.task-item.task-done .task-title { text-decoration: line-through; }
+.task-due {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+.task-due.overdue { color: var(--danger); font-weight: 600; }
+
+.task-delete-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.task-item:hover .task-delete-btn { opacity: 1; }
+.task-delete-btn:hover { background: rgba(220,38,38,0.1); color: var(--danger); }
+
+.tasks-add-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.tasks-add-input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-family: "Gowun Dodum", sans-serif;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.tasks-add-input:focus { border-color: var(--accent); }
+.tasks-add-due {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  color: var(--text);
+  font-size: 0.75rem;
+  font-family: "Gowun Dodum", sans-serif;
+  outline: none;
+  width: 116px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.tasks-add-btn {
+  background: rgba(139,92,246,0.12);
+  color: var(--accent);
+  border: 1px solid rgba(139,92,246,0.25);
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.tasks-add-btn:hover { background: rgba(139,92,246,0.22); }
+
 /* ── Footer ── */
 .app-footer {
   display: flex;

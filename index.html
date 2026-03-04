@@ -59,6 +59,25 @@
         </div>
       </div>
 
+      <!-- Google Tasks 카드 -->
+      <div class="tasks-card">
+        <div class="tasks-card-header">
+          <span class="tasks-title">✅ Google Tasks</span>
+          <div class="tasks-header-btns">
+            <select id="taskListSel" class="tasks-list-sel" onchange="onTaskListChange()"></select>
+            <button class="tasks-refresh-btn" onclick="fetchTasks(currentTaskListId)" title="새로고침">↻</button>
+          </div>
+        </div>
+        <div id="tasksStatus" class="tasks-status">로그인 후 이용 가능합니다</div>
+        <div id="tasksList" class="tasks-list"></div>
+        <div class="tasks-add-row">
+          <input type="text" id="taskNewTitle" class="tasks-add-input" placeholder="새 할 일 입력..."
+            onkeydown="if(event.key==='Enter')addTask()" />
+          <input type="date" id="taskNewDue" class="tasks-add-due" />
+          <button class="tasks-add-btn" onclick="addTask()">추가</button>
+        </div>
+      </div>
+
       <div class="main-layout">
         <!-- 메모 섹션 -->
         <div class="memo-col">

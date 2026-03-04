@@ -360,6 +360,27 @@
       </div>
     </div>
 
+    <!-- Drive 폴더 피커 모달 -->
+    <div id="driveFolderModal" class="folder-picker-overlay" onclick="closeFolderPicker(event)" style="display:none">
+      <div class="folder-picker-box">
+        <div class="folder-picker-header">
+          <span>📁 업로드 위치 선택</span>
+          <button class="folder-picker-close" onclick="closeFolderPicker()">×</button>
+        </div>
+        <div class="folder-picker-breadcrumb" id="folderBreadcrumb"></div>
+        <div class="folder-picker-list" id="folderList">
+          <div class="folder-picker-loading">폴더 불러오는 중...</div>
+        </div>
+        <div class="folder-picker-footer">
+          <span class="folder-picker-hint" id="folderPickerHint"></span>
+          <div class="folder-picker-btns">
+            <button class="folder-picker-cancel" onclick="closeFolderPicker()">취소</button>
+            <button class="folder-picker-confirm" id="folderConfirmBtn" onclick="confirmFolderUpload()">여기에 업로드</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Drive 미리보기 모달 -->
     <div id="drivePreviewModal" class="drive-preview-overlay" onclick="closeDrivePreview(event)" style="display:none">
       <div class="drive-preview-box">

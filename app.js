@@ -1942,17 +1942,122 @@ function renderDriveFiles(files) {
 }
 
 // ── Drive 업로드 ──
+let pendingUploadFiles = [];
+let selectedFolderId = "root";
+let folderNavStack = [{ id: "root", name: "내 드라이브" }];
+
 function onDriveUploadSelect() {
   const input = document.getElementById("driveUploadInput");
-  Array.from(input.files).forEach(f => uploadDriveFile(f));
+  pendingUploadFiles = Array.from(input.files);
   input.value = "";
+  if (pendingUploadFiles.length) openFolderPicker();
 }
 
-async function uploadDriveFile(file) {
+function onDriveDropzoneOver(e) {
+  e.preventDefault();
+  document.getElementById("driveDropzone").classList.add("drag-over");
+}
+function onDriveDropzoneLeave() {
+  document.getElementById("driveDropzone").classList.remove("drag-over");
+}
+function onDriveDropzoneDrop(e) {
+  e.preventDefault();
+  document.getElementById("driveDropzone").classList.remove("drag-over");
+  pendingUploadFiles = Array.from(e.dataTransfer.files);
+  if (pendingUploadFiles.length) openFolderPicker();
+}
+
+// ── 폴더 피커 ──
+function openFolderPicker() {
+  folderNavStack = [{ id: "root", name: "내 드라이브" }];
+  selectedFolderId = "root";
+  document.getElementById("driveFolderModal").style.display = "flex";
+  renderFolderBreadcrumb();
+  loadFolderContents("root");
+  const n = pendingUploadFiles.length;
+  document.getElementById("folderConfirmBtn").textContent = `여기에 업로드 (${n}개)`;
+}
+
+function closeFolderPicker(e) {
+  if (e && e.target !== document.getElementById("driveFolderModal")) return;
+  document.getElementById("driveFolderModal").style.display = "none";
+  pendingUploadFiles = [];
+}
+
+async function loadFolderContents(folderId) {
+  const list = document.getElementById("folderList");
+  list.innerHTML = `<div class="folder-picker-loading">불러오는 중...</div>`;
+
+  const q = encodeURIComponent(
+    `mimeType='application/vnd.google-apps.folder' and trashed=false and '${folderId}' in parents`
+  );
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&orderBy=name&pageSize=50`,
+      { headers: { Authorization: `Bearer ${gmailToken}` } }
+    );
+    if (res.status === 401) { handleTokenExpired(); return; }
+    const { files } = await res.json();
+
+    if (!files?.length) {
+      list.innerHTML = `<div class="folder-picker-empty">📂 하위 폴더가 없습니다</div>`;
+      return;
+    }
+    list.innerHTML = files.map(f => `
+      <div class="folder-picker-item" onclick="navigateToFolder('${f.id}', ${JSON.stringify(f.name)})">
+        <span class="folder-picker-item-icon">📁</span>
+        <span class="folder-picker-item-name">${f.name}</span>
+        <span class="folder-picker-item-arrow">›</span>
+      </div>`).join("");
+  } catch {
+    list.innerHTML = `<div class="folder-picker-empty">폴더를 불러올 수 없습니다</div>`;
+  }
+}
+
+function navigateToFolder(id, name) {
+  folderNavStack.push({ id, name });
+  selectedFolderId = id;
+  renderFolderBreadcrumb();
+  loadFolderContents(id);
+}
+
+function navigateBreadcrumb(idx) {
+  folderNavStack = folderNavStack.slice(0, idx + 1);
+  const cur = folderNavStack[folderNavStack.length - 1];
+  selectedFolderId = cur.id;
+  renderFolderBreadcrumb();
+  loadFolderContents(cur.id);
+}
+
+function renderFolderBreadcrumb() {
+  const el = document.getElementById("folderBreadcrumb");
+  el.innerHTML = folderNavStack.map((f, i) => {
+    const isLast = i === folderNavStack.length - 1;
+    return isLast
+      ? `<span class="bc-current">${f.name}</span>`
+      : `<span class="bc-link" onclick="navigateBreadcrumb(${i})">${f.name}</span><span class="bc-sep">›</span>`;
+  }).join("");
+
+  const hint = document.getElementById("folderPickerHint");
+  const cur = folderNavStack[folderNavStack.length - 1];
+  hint.textContent = `업로드 위치: ${cur.name}`;
+}
+
+async function confirmFolderUpload() {
+  if (!pendingUploadFiles.length) return;
+  document.getElementById("driveFolderModal").style.display = "none";
+  const files = [...pendingUploadFiles];
+  pendingUploadFiles = [];
+  for (const f of files) {
+    await uploadDriveFile(f, selectedFolderId);
+  }
+}
+
+async function uploadDriveFile(file, folderId = "root") {
   const status = document.getElementById("driveStatus");
   status.textContent = `"${file.name}" 업로드 중...`;
 
-  const metadata = { name: file.name };
+  const metadata = { name: file.name, parents: [folderId] };
   const form = new FormData();
   form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
   form.append("file", file);
@@ -1974,19 +2079,6 @@ async function uploadDriveFile(file) {
   } catch {
     alert("업로드 중 오류가 발생했습니다.");
   }
-}
-
-function onDriveDropzoneOver(e) {
-  e.preventDefault();
-  document.getElementById("driveDropzone").classList.add("drag-over");
-}
-function onDriveDropzoneLeave() {
-  document.getElementById("driveDropzone").classList.remove("drag-over");
-}
-function onDriveDropzoneDrop(e) {
-  e.preventDefault();
-  document.getElementById("driveDropzone").classList.remove("drag-over");
-  Array.from(e.dataTransfer.files).forEach(f => uploadDriveFile(f));
 }
 
 // ── Drive 미리보기 ──

@@ -432,11 +432,31 @@ function insertSignatureIntoCompose(sig) {
   currentComposeSignature = sig || null;
 
   if (sig) {
+    // 서명 앞에 타이핑 가능한 공간이 없으면 빈 단락 추가
+    const hasTypingArea = [...body.childNodes].some(
+      (n) => !(n.classList && n.classList.contains("compose-sig-block"))
+    );
+    if (!hasTypingArea) {
+      body.innerHTML = "<p><br></p>";
+    }
+
     const block = document.createElement("div");
     block.className = "compose-sig-block";
     block.setAttribute("contenteditable", "false");
     block.innerHTML = sig.content;
     body.appendChild(block);
+
+    // 커서를 서명 위 타이핑 영역으로 이동
+    body.focus();
+    const range = document.createRange();
+    const sel = window.getSelection();
+    const target = body.firstChild;
+    if (target && target !== block) {
+      range.setStart(target, 0);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    }
   }
 }
 
@@ -779,8 +799,7 @@ async function buildMimeRaw({ to, cc, subject, bodyHtml, messageId, files }) {
   temp.querySelectorAll(".compose-sig-block").forEach((el) => {
     el.removeAttribute("contenteditable");
     el.removeAttribute("class");
-    el.style.cssText =
-      "margin-top:12px;padding-top:10px;border-top:1px solid #ddd;font-size:13px;";
+    el.style.cssText = "margin-top:16px;font-size:13px;";
   });
   const cleanHtml = temp.innerHTML;
 
@@ -896,8 +915,20 @@ async function sendComposedEmail() {
   }
 }
 
+// X 버튼: 컴포즈가 열려있으면 임시저장 확인, 아니면 바로 닫기
+function onEmailModalCloseBtn() {
+  const composeVisible = document.getElementById("emailComposeArea").style.display !== "none";
+  if (composeVisible) {
+    tryCloseCompose();
+  } else {
+    closeEmailModal();
+  }
+}
+
 function closeEmailModal(e) {
   if (e && e.target !== document.getElementById("emailModal")) return;
+  // 새 메일 작성 중에는 오버레이 클릭으로 닫히지 않음
+  if (e && currentEmailMeta === null) return;
   document.getElementById("emailModal").style.display = "none";
   document.getElementById("emailModalBody").innerHTML = "";
   document.getElementById("emailModalAttachments").innerHTML = "";

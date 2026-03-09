@@ -262,7 +262,7 @@
     <!-- 메일 상세 모달 -->
     <div id="emailModal" class="email-modal-overlay" onclick="closeEmailModal(event)" style="display:none">
       <div class="email-modal">
-        <button class="email-modal-close" onclick="closeEmailModal()">×</button>
+        <button class="email-modal-close" onclick="onEmailModalCloseBtn()">×</button>
         <div class="email-modal-header">
           <div class="email-modal-subject" id="emailModalSubject"></div>
           <div class="email-modal-meta">
@@ -415,7 +415,7 @@
     </div>
 
     <!-- 서명 관리 모달 -->
-    <div id="signatureModal" class="sig-modal-overlay" onclick="closeSignatureModal(event)" style="display:none">
+    <div id="signatureModal" class="sig-modal-overlay" style="display:none">
       <div class="sig-modal-box">
         <div class="sig-modal-header">
           <span>✍️ 서명 관리</span>

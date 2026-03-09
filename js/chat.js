@@ -37,6 +37,16 @@ async function sendChat() {
   appendChatMsg("user", text);
   chatHistory.push({ role: "user", parts: [{ text }] });
 
+  // API 키 없으면 서비스 준비중 안내
+  if (!GEMINI_API_KEY) {
+    appendChatMsg(
+      "system",
+      "🚧 죄송합니다. 현재 AI 채팅 서비스는 오픈 준비중입니다.",
+    );
+    chatHistory.pop();
+    return;
+  }
+
   const thinkingEl = document.createElement("div");
   thinkingEl.className = "chat-msg chat-msg-model chat-thinking";
   thinkingEl.textContent = "답변 생성 중...";
@@ -57,8 +67,7 @@ async function sendChat() {
     thinkingEl.remove();
 
     if (!res.ok) {
-      const errMsg = data.error?.message || "API 오류가 발생했습니다";
-      appendChatMsg("error", `⚠️ ${errMsg}`);
+      appendChatMsg("system", "🚧 AI 채팅 서비스 오픈 준비중입니다.");
       chatHistory.pop();
       return;
     }
@@ -69,7 +78,7 @@ async function sendChat() {
     appendChatMsg("model", reply);
   } catch {
     thinkingEl.remove();
-    appendChatMsg("error", "⚠️ 네트워크 오류가 발생했습니다");
+    appendChatMsg("system", "🚧 AI 채팅 서비스 오픈 준비중입니다.");
     chatHistory.pop();
   }
 }

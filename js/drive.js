@@ -111,11 +111,9 @@ async function loadFolderContents(folderId) {
     `mimeType='application/vnd.google-apps.folder' and trashed=false and '${folderId}' in parents`
   );
   try {
-    const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)&orderBy=name&pageSize=50`,
-      { headers: { Authorization: `Bearer ${gmailToken}` } }
+    const res = await apiFetch(
+      `/api/drive/files?q=${q}&fields=files(id,name)&orderBy=name&pageSize=50`
     );
-    if (res.status === 401) { handleTokenExpired(); return; }
     const { files } = await res.json();
 
     if (!files?.length) {
@@ -176,17 +174,17 @@ async function uploadDriveFile(file, folderId = "root") {
   const status = document.getElementById("driveStatus");
   status.textContent = `"${file.name}" 업로드 중...`;
 
-  const metadata = { name: file.name, parents: [folderId] };
-  const form = new FormData();
-  form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }));
-  form.append("file", file);
-
   try {
-    const res = await fetch(
-      "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink",
-      { method: "POST", headers: { Authorization: `Bearer ${gmailToken}` }, body: form }
-    );
-    if (res.status === 401) { handleTokenExpired(); return; }
+    const b64 = await fileToBase64(file);
+    const res = await apiFetch("/api/drive/upload", {
+      method: "POST",
+      body: JSON.stringify({
+        name: file.name,
+        mimeType: file.type || "application/octet-stream",
+        b64,
+        folderId,
+      }),
+    });
     if (!res.ok) {
       const err = await res.json();
       alert("업로드 실패: " + (err.error?.message || "알 수 없는 오류"));
@@ -233,17 +231,11 @@ async function fetchRecentFiles() {
   status.textContent = "최근 파일 불러오는 중...";
 
   try {
-    const res = await fetch(
-      "https://www.googleapis.com/drive/v3/files" +
-        "?orderBy=modifiedTime+desc&pageSize=15&q=trashed%3Dfalse" +
+    const res = await apiFetch(
+      "/api/drive/files?orderBy=modifiedTime+desc&pageSize=15&q=trashed%3Dfalse" +
         "&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives" +
-        "&fields=files(id,name,mimeType,modifiedTime,webViewLink)",
-      { headers: { Authorization: `Bearer ${gmailToken}` } },
+        "&fields=files(id,name,mimeType,modifiedTime,webViewLink)"
     );
-    if (res.status === 401) {
-      handleTokenExpired();
-      return;
-    }
     const { files } = await res.json();
     status.textContent = `최근 파일 ${files?.length || 0}개`;
     renderDriveFiles(files);
@@ -264,16 +256,11 @@ async function searchDriveFiles() {
     const q = encodeURIComponent(
       `name contains '${keyword}' and trashed = false`,
     );
-    const res = await fetch(
-      `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=20` +
+    const res = await apiFetch(
+      `/api/drive/files?q=${q}&pageSize=20` +
         "&includeItemsFromAllDrives=true&supportsAllDrives=true&corpora=allDrives" +
-        "&fields=files(id,name,mimeType,modifiedTime,webViewLink)",
-      { headers: { Authorization: `Bearer ${gmailToken}` } },
+        "&fields=files(id,name,mimeType,modifiedTime,webViewLink)"
     );
-    if (res.status === 401) {
-      handleTokenExpired();
-      return;
-    }
     const { files } = await res.json();
     status.textContent = `"${keyword}" 검색 결과 ${files?.length || 0}개`;
     renderDriveFiles(files);

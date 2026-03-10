@@ -323,21 +323,10 @@ async function saveSchedule() {
   }
 
   try {
-    const url = editingEventId
-      ? `https://www.googleapis.com/calendar/v3/calendars/primary/events/${editingEventId}`
-      : "https://www.googleapis.com/calendar/v3/calendars/primary/events";
-    const res = await fetch(url, {
-      method: editingEventId ? "PATCH" : "POST",
-      headers: {
-        Authorization: `Bearer ${gmailToken}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(eventBody),
-    });
-    if (res.status === 401) {
-      handleTokenExpired();
-      return;
-    }
+    const res = await apiFetch(
+      editingEventId ? `/api/calendar/events/${editingEventId}` : "/api/calendar/events",
+      { method: editingEventId ? "PATCH" : "POST", body: JSON.stringify(eventBody) }
+    );
     if (!res.ok) {
       const err = await res.json();
       alert(
@@ -428,17 +417,7 @@ function closeScheduleDetail(e) {
 async function deleteCalendarEvent(eventId) {
   if (!confirm("이 일정을 삭제할까요?")) return;
   try {
-    const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${eventId}`,
-      {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${gmailToken}` },
-      },
-    );
-    if (res.status === 401) {
-      handleTokenExpired();
-      return;
-    }
+    const res = await apiFetch(`/api/calendar/events/${eventId}`, { method: "DELETE" });
     if (res.ok || res.status === 204) {
       await fetchCalendarEvents(calYear, calMonth);
     }
@@ -448,21 +427,14 @@ async function deleteCalendarEvent(eventId) {
 }
 
 async function fetchCalendarEvents(year, month) {
-  if (!gmailToken) return;
   const timeMin = encodeURIComponent(new Date(year, month, 1).toISOString());
   const timeMax = encodeURIComponent(
     new Date(year, month + 1, 0, 23, 59, 59).toISOString(),
   );
   try {
-    const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/primary/events` +
-        `?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=100`,
-      { headers: { Authorization: `Bearer ${gmailToken}` } },
+    const res = await apiFetch(
+      `/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=100`
     );
-    if (res.status === 401) {
-      handleTokenExpired();
-      return;
-    }
     const data = await res.json();
     gcalEvents = data.items || [];
     renderCalendar();

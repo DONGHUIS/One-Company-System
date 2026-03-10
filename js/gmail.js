@@ -6,16 +6,7 @@ async function fetchEmails() {
   list.innerHTML = "";
 
   try {
-    const listRes = await fetch(
-      "https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=15&labelIds=INBOX",
-      { headers: { Authorization: `Bearer ${gmailToken}` } },
-    );
-
-    if (listRes.status === 401) {
-      handleTokenExpired();
-      return;
-    }
-
+    const listRes = await apiFetch("/api/gmail/inbox");
     const { messages } = await listRes.json();
     if (!messages?.length) {
       status.textContent = "";
@@ -25,10 +16,8 @@ async function fetchEmails() {
 
     const details = await Promise.all(
       messages.map((m) =>
-        fetch(
-          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}` +
-            `?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
-          { headers: { Authorization: `Bearer ${gmailToken}` } },
+        apiFetch(
+          `/api/gmail/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
         ).then((r) => r.json()),
       ),
     );
@@ -93,10 +82,7 @@ function getAttachmentsFromPart(part, result = []) {
 
 async function downloadAttachment(msgId, attachmentId, filename, mimeType) {
   try {
-    const res = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}/attachments/${attachmentId}`,
-      { headers: { Authorization: `Bearer ${gmailToken}` } },
-    );
+    const res = await apiFetch(`/api/gmail/attachments/${msgId}/${attachmentId}`);
     const { data } = await res.json();
     const b64 = data.replace(/-/g, "+").replace(/_/g, "/");
     const bin = atob(b64);
@@ -153,17 +139,7 @@ async function showEmailDetail(msgId) {
   modal.style.display = "flex";
 
   try {
-    const res = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${msgId}?format=full`,
-      { headers: { Authorization: `Bearer ${gmailToken}` } },
-    );
-
-    if (res.status === 401) {
-      closeEmailModal();
-      handleTokenExpired();
-      return;
-    }
-
+    const res = await apiFetch(`/api/gmail/messages/${msgId}?format=full`);
     const msg = await res.json();
     const h = (name) =>
       msg.payload.headers.find((x) => x.name === name)?.value || "";
@@ -882,22 +858,11 @@ async function sendComposedEmail() {
     if (currentEmailMeta?.threadId)
       payload.threadId = currentEmailMeta.threadId;
 
-    const res = await fetch(
-      "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${gmailToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
-    );
+    const res = await apiFetch("/api/gmail/send", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
 
-    if (res.status === 401) {
-      handleTokenExpired();
-      return;
-    }
     if (!res.ok) {
       const err = await res.json();
       alert("전송 실패: " + (err.error?.message || "알 수 없는 오류"));

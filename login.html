@@ -163,54 +163,24 @@
     </div>
 
     <script>
-      const GMAIL_CLIENT_ID =
-        "256547343367-e2mthq72nupudfquqpirpk4882oq1k26.apps.googleusercontent.com";
-      const GMAIL_SCOPE = [
-        "https://www.googleapis.com/auth/userinfo.profile",
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/gmail.send",
-        "https://www.googleapis.com/auth/drive",
-        "https://www.googleapis.com/auth/calendar.events",
-        "https://www.googleapis.com/auth/tasks",
-      ].join(" ");
+      const SERVER_URL = "http://localhost:4000";
+
+      // URL에서 login.html 숨기기
+      if (location.pathname.endsWith("login.html")) {
+        history.replaceState(null, "", location.href.replace("login.html", ""));
+      }
+
+      // 이미 로그인된 상태면 index.html로 이동
+      async function checkAlreadyLoggedIn() {
+        try {
+          const res = await fetch(`${SERVER_URL}/auth/me`, { credentials: "include" });
+          if (res.ok) location.replace("./");
+        } catch {}
+      }
+      checkAlreadyLoggedIn();
 
       function gmailLogin() {
-        if (typeof google === "undefined" || !google.accounts) {
-          showError(
-            "Google 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.",
-          );
-          return;
-        }
-
-        const tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: GMAIL_CLIENT_ID,
-          scope: GMAIL_SCOPE,
-          callback: async (resp) => {
-            if (resp.error) {
-              showError("로그인 실패: " + resp.error);
-              return;
-            }
-            sessionStorage.setItem("gmailToken", resp.access_token);
-            try {
-              const res = await fetch(
-                "https://www.googleapis.com/oauth2/v2/userinfo",
-                {
-                  headers: { Authorization: `Bearer ${resp.access_token}` },
-                },
-              );
-              if (res.ok) {
-                const data = await res.json();
-                sessionStorage.setItem(
-                  "userName",
-                  data.name || data.email || "익명",
-                );
-              }
-            } catch {}
-            location.replace("index.html");
-          },
-        });
-
-        tokenClient.requestAccessToken();
+        location.href = `${SERVER_URL}/auth/google`;
       }
 
       function showError(msg) {

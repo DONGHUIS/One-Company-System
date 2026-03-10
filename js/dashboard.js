@@ -30,10 +30,7 @@ function updateDashboardTodayEvents() {
 
 async function fetchDashboardUnread() {
   try {
-    const res = await fetch(
-      "https://gmail.googleapis.com/gmail/v1/users/me/labels/INBOX",
-      { headers: { Authorization: `Bearer ${gmailToken}` } }
-    );
+    const res = await apiFetch("/api/gmail/labels/INBOX");
     if (!res.ok) return;
     const data = await res.json();
     const unread = data.messagesUnread ?? 0;

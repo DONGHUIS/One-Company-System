@@ -1,5 +1,6 @@
 // ── 페이지 로드 시 자동 초기화 ──
-if (gmailToken) {
+checkAuth().then((ok) => {
+  if (!ok) return;
   fetchUserInfo();
   initDriveCard();
   fetchCalendarEvents(calYear, calMonth);
@@ -7,4 +8,4 @@ if (gmailToken) {
   initDashboard();
   fetchDashboardUnread();
   initTasksCard();
-}
+});

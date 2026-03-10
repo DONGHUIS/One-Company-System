@@ -1,64 +1,64 @@
 // ── 메모 기능 ──
-function getMemos() {
-  return JSON.parse(localStorage.getItem("memos")) || [];
+let memosCache = [];
+let trashCache = [];
+
+function fmtDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return isNaN(d) ? dateStr : d.toLocaleString("ko-KR", {
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit",
+  });
 }
 
-function saveMemos(memos) {
-  localStorage.setItem("memos", JSON.stringify(memos));
+async function loadMemos() {
+  try {
+    const res = await apiFetch("/api/memos");
+    memosCache = await res.json();
+  } catch {
+    memosCache = [];
+  }
+  renderMemos();
+  updateTrashBadge();
 }
 
-function getTrash() {
-  return JSON.parse(localStorage.getItem("memoTrash")) || [];
+async function loadTrash() {
+  try {
+    const res = await apiFetch("/api/memos/trash");
+    trashCache = await res.json();
+  } catch {
+    trashCache = [];
+  }
+  renderTrash();
+  updateTrashBadge();
 }
 
-function saveTrash(trash) {
-  localStorage.setItem("memoTrash", JSON.stringify(trash));
-}
-
-function cleanupTrash() {
-  const DAYS = 15;
-  const cutoff = Date.now() - DAYS * 24 * 60 * 60 * 1000;
-  saveTrash(getTrash().filter((m) => m.deletedAt > cutoff));
-}
-
-cleanupTrash();
-
-function addMemo() {
+async function addMemo() {
   const title = document.getElementById("titleInput").value.trim();
   const content = document.getElementById("contentInput").value.trim();
   const tag = document.getElementById("tagInput").value.trim();
 
   if (!title && !content) return alert("내용을 입력하세요!");
 
-  const memo = {
-    id: Date.now(),
-    title,
-    content,
-    tag: tag || "일반",
-    author: currentUserName,
-    date: new Date().toLocaleString("ko-KR", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    }),
-  };
-
-  const memos = getMemos();
-  memos.unshift(memo);
-  saveMemos(memos);
-  clearInputs();
-  renderMemos();
+  try {
+    await apiFetch("/api/memos", {
+      method: "POST",
+      body: JSON.stringify({ title, content, tag: tag || "일반" }),
+    });
+    clearInputs();
+    await loadMemos();
+  } catch {
+    alert("메모 저장 중 오류가 발생했습니다.");
+  }
 }
 
 function editMemo(id) {
-  const memo = getMemos().find((m) => m.id === id);
+  const memo = memosCache.find((m) => m.id === id);
   if (!memo) return;
 
-  document.getElementById("titleInput").value = memo.title;
-  document.getElementById("contentInput").value = memo.content;
-  document.getElementById("tagInput").value = memo.tag;
+  document.getElementById("titleInput").value = memo.title || "";
+  document.getElementById("contentInput").value = memo.content || "";
+  document.getElementById("tagInput").value = memo.tag || "";
 
   const btn = document.getElementById("addBtn");
   btn.innerHTML = `<span>수정 완료</span>
@@ -71,92 +71,73 @@ function editMemo(id) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function updateMemo(id) {
+async function updateMemo(id) {
   const title = document.getElementById("titleInput").value.trim();
   const content = document.getElementById("contentInput").value.trim();
   const tag = document.getElementById("tagInput").value.trim();
 
   if (!title && !content) return alert("내용을 입력하세요!");
 
-  const editedDate = new Date().toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const memos = getMemos().map((m) =>
-    m.id === id ? { ...m, title, content, tag: tag || "일반", editedDate } : m,
-  );
-  saveMemos(memos);
-  resetAddBtn();
-  clearInputs();
-  renderMemos();
+  try {
+    await apiFetch(`/api/memos/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ title, content, tag: tag || "일반" }),
+    });
+    resetAddBtn();
+    clearInputs();
+    await loadMemos();
+  } catch {
+    alert("메모 수정 중 오류가 발생했습니다.");
+  }
 }
 
-function deleteMemo(id) {
-  if (
-    !confirm(
-      "메모 삭제를 진행하시면 휴지통으로 이동하며 15일후 자동삭제가 진행됩니다.",
-    )
-  )
-    return;
-  const memos = getMemos();
-  const target = memos.find((m) => m.id === id);
-  if (!target) return;
-  const trash = getTrash();
-  trash.unshift({ ...target, deletedAt: Date.now() });
-  saveTrash(trash);
-  saveMemos(memos.filter((m) => m.id !== id));
-  renderMemos();
+async function deleteMemo(id) {
+  if (!confirm("메모 삭제를 진행하시면 휴지통으로 이동하며 15일후 자동삭제가 진행됩니다.")) return;
+  try {
+    await apiFetch(`/api/memos/${id}`, { method: "DELETE" });
+    await loadMemos();
+  } catch {
+    alert("삭제 중 오류가 발생했습니다.");
+  }
 }
 
-function restoreMemo(id) {
-  const trash = getTrash();
-  const target = trash.find((m) => m.id === id);
-  if (!target) return;
-  const { deletedAt, ...memo } = target;
-  const memos = getMemos();
-  memos.unshift(memo);
-  saveMemos(memos);
-  saveTrash(trash.filter((m) => m.id !== id));
-  toggleTrashView();
-  renderMemos();
-  updateTrashBadge();
+async function restoreMemo(id) {
+  try {
+    await apiFetch(`/api/memos/trash/${id}/restore`, { method: "POST" });
+    await loadTrash();
+    await loadMemos();
+    toggleTrashView();
+  } catch {
+    alert("복구 중 오류가 발생했습니다.");
+  }
 }
 
-function permanentDeleteMemo(id) {
-  if (!confirm("영구 삭제하시면 복구할 수 없습니다.그래도 삭제진행하시나요?"))
-    return;
-  saveTrash(getTrash().filter((m) => m.id !== id));
-  renderTrash();
-  updateTrashBadge();
+async function permanentDeleteMemo(id) {
+  if (!confirm("영구 삭제하시면 복구할 수 없습니다.그래도 삭제진행하시나요?")) return;
+  try {
+    await apiFetch(`/api/memos/trash/${id}`, { method: "DELETE" });
+    await loadTrash();
+  } catch {
+    alert("영구 삭제 중 오류가 발생했습니다.");
+  }
 }
 
 let trashViewOpen = false;
 
 function toggleTrashView() {
   trashViewOpen = !trashViewOpen;
-  document.getElementById("memoList").style.display = trashViewOpen
-    ? "none"
-    : "";
-  document.getElementById("searchWrap").style.display = trashViewOpen
-    ? "none"
-    : "";
-  document.getElementById("tagFilter").style.display = trashViewOpen
-    ? "none"
-    : "";
-  document.getElementById("trashList").style.display = trashViewOpen
-    ? ""
-    : "none";
+  document.getElementById("memoList").style.display = trashViewOpen ? "none" : "";
+  document.getElementById("searchWrap").style.display = trashViewOpen ? "none" : "";
+  document.getElementById("tagFilter").style.display = trashViewOpen ? "none" : "";
+  document.getElementById("trashList").style.display = trashViewOpen ? "" : "none";
   document.getElementById("trashToggleBtn").textContent = trashViewOpen
     ? "← 메모로 돌아가기"
     : "🗑 휴지통";
-  if (trashViewOpen) renderTrash();
+  if (trashViewOpen) loadTrash();
 }
 
 function updateTrashBadge() {
-  const count = getTrash().length;
+  const count = trashCache.length;
   const btn = document.getElementById("trashToggleBtn");
   if (!trashViewOpen) {
     btn.textContent = count > 0 ? `🗑 휴지통 (${count})` : "🗑 휴지통";
@@ -164,23 +145,19 @@ function updateTrashBadge() {
 }
 
 function renderTrash() {
-  const trash = getTrash();
   const list = document.getElementById("trashList");
   const now = Date.now();
   const DAYS = 15;
 
-  if (trash.length === 0) {
+  if (trashCache.length === 0) {
     list.innerHTML = `<div class="empty"><span class="empty-icon">🗑️</span>휴지통이 비어있습니다</div>`;
     return;
   }
 
-  list.innerHTML = trash
-    .map((m) => {
-      const remaining = Math.ceil(
-        (m.deletedAt + DAYS * 24 * 60 * 60 * 1000 - now) /
-          (24 * 60 * 60 * 1000),
-      );
-      return `
+  list.innerHTML = trashCache.map((m) => {
+    const deletedAt = new Date(m.deleted_at).getTime();
+    const remaining = Math.ceil((deletedAt + DAYS * 24 * 60 * 60 * 1000 - now) / (24 * 60 * 60 * 1000));
+    return `
     <div class="memo-card trash-card">
       <div class="memo-header">
         <h3>${m.title || "제목 없음"}</h3>
@@ -188,16 +165,15 @@ function renderTrash() {
       </div>
       <div class="memo-meta">
         <span class="tag"># ${m.tag}</span>
-        <span class="author">✍️ ${m.author || "익명"}</span>
+        <span class="author">✍️ ${currentUserName}</span>
       </div>
-      <p class="memo-content">${m.content}</p>
+      <p class="memo-content">${m.content || ""}</p>
       <div class="memo-buttons">
         <button class="btn-restore" onclick="restoreMemo(${m.id})">↩ 복구</button>
         <button class="btn-del" onclick="permanentDeleteMemo(${m.id})">🗑 영구삭제</button>
       </div>
     </div>`;
-    })
-    .join("");
+  }).join("");
 }
 
 function resetAddBtn() {
@@ -217,15 +193,11 @@ function clearInputs() {
 }
 
 function updateTagFilter() {
-  const memos = getMemos();
-  const tags = ["전체", ...new Set(memos.map((m) => m.tag))];
+  const tags = ["전체", ...new Set(memosCache.map((m) => m.tag))];
   const current = document.getElementById("tagFilter").value;
 
   document.getElementById("tagFilter").innerHTML = tags
-    .map(
-      (t) =>
-        `<option value="${t}" ${t === current ? "selected" : ""}>${t === "전체" ? "전체 태그" : t}</option>`,
-    )
+    .map((t) => `<option value="${t}" ${t === current ? "selected" : ""}>${t === "전체" ? "전체 태그" : t}</option>`)
     .join("");
 }
 
@@ -233,34 +205,27 @@ const MEMOS_PER_PAGE = 5;
 let currentPage = 1;
 
 function renderMemos() {
-  const searchVal = document
-    .getElementById("searchInput")
-    .value.trim()
-    .toLowerCase();
+  const searchVal = document.getElementById("searchInput").value.trim().toLowerCase();
   const tagFilter = document.getElementById("tagFilter").value;
 
-  let memos = getMemos();
+  let memos = memosCache;
 
   if (searchVal) {
     memos = memos.filter(
       (m) =>
-        m.title.toLowerCase().includes(searchVal) ||
-        m.content.toLowerCase().includes(searchVal) ||
-        (m.author && m.author.toLowerCase().includes(searchVal)),
+        (m.title || "").toLowerCase().includes(searchVal) ||
+        (m.content || "").toLowerCase().includes(searchVal),
     );
   }
 
-  if (tagFilter !== "전체") {
+  if (tagFilter && tagFilter !== "전체") {
     memos = memos.filter((m) => m.tag === tagFilter);
   }
 
   const totalPages = Math.max(1, Math.ceil(memos.length / MEMOS_PER_PAGE));
   if (currentPage > totalPages) currentPage = totalPages;
 
-  const paged = memos.slice(
-    (currentPage - 1) * MEMOS_PER_PAGE,
-    currentPage * MEMOS_PER_PAGE,
-  );
+  const paged = memos.slice((currentPage - 1) * MEMOS_PER_PAGE, currentPage * MEMOS_PER_PAGE);
   const list = document.getElementById("memoList");
 
   if (memos.length === 0) {
@@ -270,42 +235,34 @@ function renderMemos() {
         메모가 없습니다
       </div>`;
   } else {
-    const cards = paged
-      .map(
-        (m) => `
+    const cards = paged.map((m) => `
       <div class="memo-card">
         <div class="memo-header">
           <h3>${m.title || "제목 없음"}</h3>
           <span class="memo-date">
-            ${
-              m.editedDate
-                ? `${m.editedDate} <span class="memo-edited">(편집됨)</span>`
-                : m.date
+            ${m.edited_at
+              ? `${fmtDate(m.edited_at)} <span class="memo-edited">(편집됨)</span>`
+              : fmtDate(m.created_at)
             }
           </span>
         </div>
         <div class="memo-meta">
           <span class="tag"># ${m.tag}</span>
-          <span class="author">✍️ ${m.author || "익명"}</span>
+          <span class="author">✍️ ${currentUserName}</span>
         </div>
-        <p class="memo-content">${m.content}</p>
+        <p class="memo-content">${m.content || ""}</p>
         <div class="memo-buttons">
           <button class="btn-edit" onclick="editMemo(${m.id})">✏️ 수정</button>
           <button class="btn-del" onclick="deleteMemo(${m.id})">🗑 삭제</button>
         </div>
-      </div>`,
-      )
-      .join("");
+      </div>`).join("");
 
-    const pagination =
-      totalPages > 1
-        ? `
+    const pagination = totalPages > 1 ? `
       <div class="pagination">
         <button class="page-btn" onclick="changePage(-1)" ${currentPage === 1 ? "disabled" : ""}>&#8249;</button>
         <span class="page-info">${currentPage} / ${totalPages}</span>
         <button class="page-btn" onclick="changePage(1)" ${currentPage === totalPages ? "disabled" : ""}>&#8250;</button>
-      </div>`
-        : "";
+      </div>` : "";
 
     list.innerHTML = cards + pagination;
   }
@@ -327,8 +284,7 @@ document.getElementById("tagFilter").addEventListener("change", () => {
   renderMemos();
 });
 
-renderMemos();
-updateTrashBadge();
+loadMemos();
 document.getElementById("footerYear").textContent = new Date().getFullYear();
 
 // ── 날씨 기능 ──
@@ -385,24 +341,14 @@ function fetchWeather() {
         const geoData = await geoRes.json();
 
         const { temperature, weathercode } = current_weather;
-        const weather = WMO_CODES[weathercode] || {
-          icon: "🌡️",
-          text: "알 수 없음",
-        };
+        const weather = WMO_CODES[weathercode] || { icon: "🌡️", text: "알 수 없음" };
 
         const addr = geoData.address;
-        const city =
-          addr.city ||
-          addr.town ||
-          addr.county ||
-          addr.state ||
-          "알 수 없는 위치";
+        const city = addr.city || addr.town || addr.county || addr.state || "알 수 없는 위치";
         const district = addr.city_district || addr.suburb || "";
         const road = addr.road || "";
         const houseNumber = addr.house_number || "";
-        const detailAddr = [city, district, road, houseNumber]
-          .filter(Boolean)
-          .join(" ");
+        const detailAddr = [city, district, road, houseNumber].filter(Boolean).join(" ");
 
         el.outerHTML = `
           <span class="weather-info" id="weatherContent">

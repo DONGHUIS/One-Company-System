@@ -1,15 +1,11 @@
 // ── Google Tasks ──
-const TASKS_BASE = "https://tasks.googleapis.com/tasks/v1";
 let currentTaskListId = "@default";
 
 async function initTasksCard() {
   const status = document.getElementById("tasksStatus");
   status.textContent = "할 일 목록 불러오는 중...";
   try {
-    const res = await fetch(`${TASKS_BASE}/users/@me/lists?maxResults=20`, {
-      headers: { Authorization: `Bearer ${gmailToken}` },
-    });
-    if (res.status === 401) { handleTokenExpired(); return; }
+    const res = await apiFetch("/api/tasks/lists");
     if (res.status === 403) {
       status.textContent = "⚠ Tasks 권한이 없습니다. 로그아웃 후 다시 로그인하세요.";
       return;
@@ -52,11 +48,7 @@ async function fetchTasks(listId) {
   document.getElementById("tasksList").innerHTML = "";
   status.textContent = "불러오는 중...";
   try {
-    const res = await fetch(
-      `${TASKS_BASE}/lists/${listId}/tasks?showCompleted=true&showHidden=false&maxResults=50`,
-      { headers: { Authorization: `Bearer ${gmailToken}` } }
-    );
-    if (res.status === 401) { handleTokenExpired(); return; }
+    const res = await apiFetch(`/api/tasks/${listId}`);
     const { items } = await res.json();
     status.textContent = "";
     renderTasks(items || []);
@@ -107,12 +99,10 @@ async function addTask() {
   if (dueEl.value) body.due = dueEl.value + "T00:00:00.000Z";
 
   try {
-    const res = await fetch(`${TASKS_BASE}/lists/${currentTaskListId}/tasks`, {
+    const res = await apiFetch(`/api/tasks/${currentTaskListId}/tasks`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${gmailToken}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (res.status === 401) { handleTokenExpired(); return; }
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       alert("추가 실패: " + (err.error?.message || `오류 코드 ${res.status}`));
@@ -132,9 +122,8 @@ async function addTask() {
 async function toggleTask(taskId, isDone) {
   const newStatus = isDone ? "needsAction" : "completed";
   try {
-    await fetch(`${TASKS_BASE}/lists/${currentTaskListId}/tasks/${taskId}`, {
+    await apiFetch(`/api/tasks/${currentTaskListId}/tasks/${taskId}`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${gmailToken}`, "Content-Type": "application/json" },
       body: JSON.stringify({ status: newStatus, ...(newStatus === "needsAction" ? { completed: null } : {}) }),
     });
     fetchTasks(currentTaskListId);
@@ -146,10 +135,7 @@ async function toggleTask(taskId, isDone) {
 async function deleteTask(taskId) {
   if (!confirm("이 할 일을 삭제할까요?")) return;
   try {
-    await fetch(`${TASKS_BASE}/lists/${currentTaskListId}/tasks/${taskId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${gmailToken}` },
-    });
+    await apiFetch(`/api/tasks/${currentTaskListId}/tasks/${taskId}`, { method: "DELETE" });
     fetchTasks(currentTaskListId);
   } catch {
     alert("삭제 중 오류가 발생했습니다.");

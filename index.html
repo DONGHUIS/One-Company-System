@@ -202,7 +202,10 @@
         <!-- Gmail 카드 -->
         <div class="gmail-card">
           <div class="gmail-card-header">
-            <span class="gmail-title">📧 받은 메일함</span>
+            <div class="gmail-tabs">
+              <button class="gmail-tab active" id="tabInbox" onclick="switchMailbox('inbox')">📥 받은 메일함</button>
+              <button class="gmail-tab" id="tabSent" onclick="switchMailbox('sent')">📤 보낸 편지함</button>
+            </div>
             <div class="gmail-header-btns">
               <button class="gmail-compose-btn" onclick="openNewCompose()" title="새 메일 작성">✏️ 새 메일</button>
               <button class="gmail-draft-btn" onclick="showDraftListModal()" title="임시저장함">📝 임시저장</button>
@@ -238,6 +241,36 @@
           </div>
           <div id="driveStatus" class="drive-status">Google 로그인 후 이용 가능합니다</div>
           <div id="driveList"></div>
+        </div>
+
+        <!-- Maps 카드 -->
+        <div class="maps-card">
+          <div class="maps-card-header">
+            <span class="maps-title">🗺️ 길찾기</span>
+          </div>
+          <div class="maps-inputs">
+            <div class="maps-input-row">
+              <span class="maps-input-label">출발</span>
+              <input type="text" id="mapsOrigin" class="maps-input" placeholder="출발지 입력" />
+              <button class="maps-myloc-btn" onclick="setMyLocation()" title="현재 위치">📍</button>
+            </div>
+            <div class="maps-input-row">
+              <span class="maps-input-label">도착</span>
+              <input type="text" id="mapsDestination" class="maps-input" placeholder="목적지 입력"
+                onkeydown="if(event.key==='Enter') searchDirections()" />
+            </div>
+            <div class="maps-controls">
+              <div class="maps-mode-btns">
+                <button class="maps-mode-btn active" data-mode="DRIVING" onclick="setTravelMode(this)" title="자동차">자동차</button>
+                <button class="maps-mode-btn" data-mode="TRANSIT" onclick="setTravelMode(this)" title="대중교통">대중교통</button>
+                <button class="maps-mode-btn" data-mode="WALKING" onclick="setTravelMode(this)" title="도보">도보</button>
+                <button class="maps-mode-btn" data-mode="BICYCLING" onclick="setTravelMode(this)" title="자전거">자전거</button>
+              </div>
+              <button class="maps-search-btn" onclick="searchDirections()">길찾기</button>
+            </div>
+          </div>
+          <div id="mapsRouteInfo" class="maps-route-info" style="display:none"></div>
+          <div id="mapsContainer" class="maps-container"></div>
         </div>
 
         <footer class="app-footer">
@@ -499,6 +532,7 @@
     <script src="js/dashboard.js"></script>
     <script src="js/tasks.js"></script>
     <script src="js/chat.js"></script>
+    <script src="js/maps.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

@@ -1,39 +1,47 @@
 // ── Gmail 기능 ──
+let currentMailbox = "inbox";
+
+function switchMailbox(type) {
+  currentMailbox = type;
+  document.getElementById("tabInbox").classList.toggle("active", type === "inbox");
+  document.getElementById("tabSent").classList.toggle("active", type === "sent");
+  fetchEmails();
+}
+
 async function fetchEmails() {
   const status = document.getElementById("gmailStatus");
   const list = document.getElementById("gmailList");
+  const isSent = currentMailbox === "sent";
   status.textContent = "메일 불러오는 중...";
   list.innerHTML = "";
 
   try {
-    const listRes = await apiFetch("/api/gmail/inbox");
+    const listRes = await apiFetch(isSent ? "/api/gmail/sent" : "/api/gmail/inbox");
     const { messages } = await listRes.json();
     if (!messages?.length) {
       status.textContent = "";
-      list.innerHTML = `<p class="gmail-empty">받은 메일이 없습니다</p>`;
+      list.innerHTML = `<p class="gmail-empty">${isSent ? "보낸 메일이 없습니다" : "받은 메일이 없습니다"}</p>`;
       return;
     }
 
     const details = await Promise.all(
       messages.map((m) =>
         apiFetch(
-          `/api/gmail/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
+          `/api/gmail/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`
         ).then((r) => r.json()),
       ),
     );
 
     status.textContent = `최근 ${details.length}개 메일`;
-    fetchDashboardUnread();
+    if (!isSent) fetchDashboardUnread();
     list.innerHTML = details
       .map((msg) => {
         const h = (name) =>
           msg.payload.headers.find((x) => x.name === name)?.value || "";
         const subject = h("Subject") || "(제목 없음)";
-        const from =
-          h("From")
-            .replace(/<[^>]+>/, "")
-            .replace(/"/g, "")
-            .trim() || h("From");
+        const senderOrRecipient = isSent
+          ? (h("To").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || h("To"))
+          : (h("From").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || h("From"));
         const dateStr = (() => {
           const d = new Date(h("Date"));
           return isNaN(d)
@@ -52,7 +60,7 @@ async function fetchEmails() {
         <div class="gmail-item${isUnread ? " gmail-unread" : ""}" onclick="showEmailDetail('${msg.id}')">
           <div class="gmail-from">
             ${isUnread ? '<span class="gmail-unread-dot"></span>' : ""}
-            ${from}
+            ${isSent ? "받는 사람: " : ""}${senderOrRecipient}
           </div>
           <div class="gmail-subject">${subject}</div>
           <div class="gmail-snippet">${snippet}</div>

@@ -10,7 +10,7 @@ async function checkAuth() {
   try {
     const res = await fetch(`${SERVER_URL}/auth/me`, { credentials: "include" });
     if (!res.ok) {
-      location.replace("login.html");
+      location.replace("./login.html");
       return false;
     }
     const user = await res.json();
@@ -20,7 +20,7 @@ async function checkAuth() {
     }
     return true;
   } catch {
-    location.replace("login.html");
+    location.replace("./login.html");
     return false;
   }
 }
@@ -29,11 +29,11 @@ function logout() {
   fetch(`${SERVER_URL}/auth/logout`, {
     method: "POST",
     credentials: "include",
-  }).finally(() => location.replace("login.html"));
+  }).finally(() => location.replace("./login.html"));
 }
 
 function handleTokenExpired() {
-  location.replace("login.html");
+  location.replace("./login.html");
 }
 
 async function fetchUserInfo() {

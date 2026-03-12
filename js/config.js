@@ -15,10 +15,11 @@ async function checkAuth() {
     }
     const user = await res.json();
     currentUserName = user.name || user.email || "익명";
+    gmailToken = user.hasGoogle;
     if (location.pathname.endsWith("index.html")) {
       history.replaceState(null, "", location.href.replace("index.html", ""));
     }
-    return true;
+    return user;
   } catch {
     location.replace("./login.html");
     return false;

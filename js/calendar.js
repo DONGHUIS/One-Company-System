@@ -1,4 +1,8 @@
-// ── 일정 기능 (Google Calendar) ──
+// ── 일정 기능 (Google Calendar / 로컬 DB) ──
+function calBase() {
+  return gmailToken ? "/api/calendar" : "/api/local";
+}
+
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
 let selectedDate = null;
@@ -89,18 +93,11 @@ function selectDate(dateStr) {
   const [y, m, d] = dateStr.split("-");
   document.getElementById("selectedDateLabel").textContent =
     `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
-  document.getElementById("btnAddSchedule").style.display = gmailToken
-    ? "inline-block"
-    : "none";
+  document.getElementById("btnAddSchedule").style.display = "inline-block";
 }
 
 function renderScheduleList() {
   const list = document.getElementById("scheduleList");
-
-  if (!gmailToken) {
-    list.innerHTML = `<p class="schedule-empty">Google 로그인 후 일정을 불러옵니다</p>`;
-    return;
-  }
 
   if (selectedDate) {
     const events = gcalEvents
@@ -324,7 +321,7 @@ async function saveSchedule() {
 
   try {
     const res = await apiFetch(
-      editingEventId ? `/api/calendar/events/${editingEventId}` : "/api/calendar/events",
+      editingEventId ? `${calBase()}/events/${editingEventId}` : `${calBase()}/events`,
       { method: editingEventId ? "PATCH" : "POST", body: JSON.stringify(eventBody) }
     );
     if (!res.ok) {
@@ -417,7 +414,7 @@ function closeScheduleDetail(e) {
 async function deleteCalendarEvent(eventId) {
   if (!confirm("이 일정을 삭제할까요?")) return;
   try {
-    const res = await apiFetch(`/api/calendar/events/${eventId}`, { method: "DELETE" });
+    const res = await apiFetch(`${calBase()}/events/${eventId}`, { method: "DELETE" });
     if (res.ok || res.status === 204) {
       await fetchCalendarEvents(calYear, calMonth);
     }
@@ -433,7 +430,7 @@ async function fetchCalendarEvents(year, month) {
   );
   try {
     const res = await apiFetch(
-      `/api/calendar/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=100`
+      `${calBase()}/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=100`
     );
     const data = await res.json();
     gcalEvents = data.items || [];

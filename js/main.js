@@ -1,13 +1,19 @@
 // ── 페이지 로드 시 자동 초기화 ──
-checkAuth().then((ok) => {
-  if (!ok) return;
+checkAuth().then((user) => {
+  if (!user) return;
   fetchUserInfo();
-  initDriveCard();
   fetchCalendarEvents(calYear, calMonth);
-  fetchEmails();
   initDashboard();
-  fetchDashboardUnread();
   initTasksCard();
   initMapsCard();
   initReminders();
+
+  if (user.hasGoogle) {
+    initDriveCard();
+    fetchEmails();
+    fetchDashboardUnread();
+  } else {
+    document.getElementById("gmailCard").style.display = "none";
+    document.getElementById("driveCard").style.display = "none";
+  }
 });

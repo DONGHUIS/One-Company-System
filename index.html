@@ -306,7 +306,9 @@
         <div class="email-modal-actions">
           <button class="email-action-btn" onclick="openCompose('reply')">↩ 답장</button>
           <button class="email-action-btn" onclick="openCompose('forward')">→ 전달</button>
+          <button class="email-action-btn email-ai-btn" onclick="summarizeEmail()">✨ AI 요약</button>
         </div>
+        <div id="emailAiSummary" class="email-ai-summary" style="display:none"></div>
         <!-- 컴포즈 영역 -->
         <div class="email-compose-area" id="emailComposeArea" style="display:none">
           <div id="draftRestoreBar" class="draft-restore-bar" style="display:none">
@@ -533,6 +535,7 @@
     <script src="js/tasks.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/maps.js"></script>
+    <script src="js/reminder.js"></script>
     <script src="js/main.js"></script>
   </body>
 </html>

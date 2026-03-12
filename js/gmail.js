@@ -898,6 +898,41 @@ function onEmailModalCloseBtn() {
   }
 }
 
+// ── AI 이메일 요약 ──
+async function summarizeEmail() {
+  if (!currentEmailMeta) return;
+
+  const btn = document.querySelector(".email-ai-btn");
+  const summaryEl = document.getElementById("emailAiSummary");
+
+  btn.disabled = true;
+  btn.textContent = "요약 중...";
+  summaryEl.style.display = "block";
+  summaryEl.innerHTML = `<div class="email-ai-loading">✨ AI가 요약하는 중...</div>`;
+
+  try {
+    const res = await apiFetch("/api/ai/summarize-email", {
+      method: "POST",
+      body: JSON.stringify({
+        subject: currentEmailMeta.subject,
+        from: currentEmailMeta.from,
+        body: currentEmailMeta.bodyText.slice(0, 4000),
+      }),
+    });
+    const { summary, error } = await res.json();
+    if (error) throw new Error(error);
+
+    summaryEl.innerHTML = `
+      <div class="email-ai-header">✨ AI 요약</div>
+      <div class="email-ai-content">${summary.replace(/\n/g, "<br>")}</div>`;
+  } catch (e) {
+    summaryEl.innerHTML = `<div class="email-ai-error">요약 실패: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "✨ AI 요약";
+  }
+}
+
 function closeEmailModal(e) {
   if (e && e.target !== document.getElementById("emailModal")) return;
   // 새 메일 작성 중에는 오버레이 클릭으로 닫히지 않음
@@ -906,6 +941,8 @@ function closeEmailModal(e) {
   document.getElementById("emailModalBody").innerHTML = "";
   document.getElementById("emailModalAttachments").innerHTML = "";
   document.getElementById("emailModalAttachments").style.display = "none";
+  document.getElementById("emailAiSummary").style.display = "none";
+  document.getElementById("emailAiSummary").innerHTML = "";
   document.querySelector(".email-modal-actions").style.display = "";
   closeCompose();
   currentEmailMeta = null;

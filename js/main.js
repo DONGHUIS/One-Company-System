@@ -9,4 +9,5 @@ checkAuth().then((ok) => {
   fetchDashboardUnread();
   initTasksCard();
   initMapsCard();
+  initReminders();
 });

@@ -347,15 +347,14 @@ function showScheduleDetail(eventId) {
 
   document.getElementById("sdmTitle").textContent = e.summary || "(제목 없음)";
 
-  const timeStr = e.start.dateTime ? `${gcalEventTime(e)}` : "종일";
-
+  const fmtTime = (dt) =>
+    new Date(dt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
   const fmtDate = (raw) => {
     const d = new Date(raw);
     return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
   };
 
   const startDateStr = fmtDate(e.start.dateTime || e.start.date);
-
   const endRaw =
     e.end.dateTime ||
     (() => {
@@ -364,9 +363,18 @@ function showScheduleDetail(eventId) {
       return d.toISOString().substring(0, 10);
     })();
   const endDateStr = fmtDate(endRaw);
-
   const isMultiDay = startDateStr !== endDateStr;
-  const dateStr = isMultiDay ? `${startDateStr} ~ ${endDateStr}` : startDateStr;
+
+  let dateStr;
+  if (e.start.dateTime) {
+    const startPart = `${startDateStr} ${fmtTime(e.start.dateTime)}`;
+    const endPart = e.end.dateTime
+      ? `${isMultiDay ? endDateStr + " " : ""}${fmtTime(e.end.dateTime)}`
+      : "";
+    dateStr = endPart ? `${startPart} ~ ${endPart}` : startPart;
+  } else {
+    dateStr = isMultiDay ? `${startDateStr} ~ ${endDateStr}` : `${startDateStr} (종일)`;
+  }
 
   const people = (e.attendees || []).filter((a) => !a.resource);
   const attendeeHtml = people.length
@@ -392,7 +400,7 @@ function showScheduleDetail(eventId) {
   document.getElementById("sdmBody").innerHTML = `
     <div class="sdm-row">
       <span class="sdm-label">날짜</span>
-      <span>${dateStr} ${timeStr}</span>
+      <span>${dateStr}</span>
     </div>
     ${e.location ? `<div class="sdm-row"><span class="sdm-label">장소</span><span>${e.location}</span></div>` : ""}
     ${e.description ? `<div class="sdm-row"><span class="sdm-label">설명</span><span class="sdm-desc">${e.description.replace(/\n/g, "<br>")}</span></div>` : ""}

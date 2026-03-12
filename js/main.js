@@ -4,7 +4,6 @@ checkAuth().then((user) => {
   fetchUserInfo();
   fetchCalendarEvents(calYear, calMonth);
   initDashboard();
-  initTasksCard();
   initMapsCard();
   initReminders();
 
@@ -12,8 +11,11 @@ checkAuth().then((user) => {
     initDriveCard();
     fetchEmails();
     fetchDashboardUnread();
+    initTasksCard();
   } else {
     document.getElementById("gmailCard").style.display = "none";
     document.getElementById("driveCard").style.display = "none";
+    document.getElementById("tasksCard").style.display = "none";
+    document.getElementById("changePwBtn").style.display = "inline-block";
   }
 });

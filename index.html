@@ -18,7 +18,10 @@
 
     <div class="container">
       <header>
-        <button class="header-logout-btn" onclick="logout()">로그아웃</button>
+        <div class="header-right-btns">
+          <button class="header-change-pw-btn" id="changePwBtn" onclick="openChangePwModal()" style="display:none">개인정보 변경</button>
+          <button class="header-logout-btn" onclick="logout()">로그아웃</button>
+        </div>
         <div class="logo">📝</div>
         <h1>MY WORK SPACE</h1>
         <p class="subtitle">업무를 편하게 One-Stop 처리</p>
@@ -60,7 +63,7 @@
       </div>
 
       <!-- Google Tasks 카드 -->
-      <div class="tasks-card">
+      <div class="tasks-card" id="tasksCard">
         <div class="tasks-card-header">
           <span class="tasks-title">✅ Google Tasks</span>
           <div class="tasks-header-btns">
@@ -446,6 +449,34 @@
           </div>
         </div>
         <div id="drivePreviewContent" class="drive-preview-content"></div>
+      </div>
+    </div>
+
+    <!-- 개인정보 변경 모달 -->
+    <div id="changePwModal" class="changepw-overlay" onclick="closeChangePwModal(event)" style="display:none">
+      <div class="changepw-box">
+        <div class="changepw-header">
+          <span>⚙️ 개인정보 변경</span>
+          <button class="changepw-close" onclick="closeChangePwModal()">×</button>
+        </div>
+        <div class="changepw-body">
+          <!-- 비밀번호 변경 섹션 -->
+          <div class="changepw-section-title">🔑 비밀번호 변경</div>
+          <input class="changepw-input" type="password" id="cpwCurrent" placeholder="현재 비밀번호" />
+          <input class="changepw-input" type="password" id="cpwNew" placeholder="새 비밀번호 (6자 이상)" />
+          <input class="changepw-input" type="password" id="cpwConfirm" placeholder="새 비밀번호 확인" />
+          <div class="changepw-msg" id="changePwMsg"></div>
+          <button class="changepw-submit-btn" onclick="submitChangePw()">비밀번호 변경</button>
+
+          <!-- 구분선 -->
+          <div class="changepw-divider"></div>
+
+          <!-- 회원 탈퇴 섹션 -->
+          <div class="changepw-section-title withdraw-title">⚠️ 회원 탈퇴</div>
+          <p class="changepw-withdraw-desc">탈퇴 시 모든 데이터가 삭제되며 복구할 수 없습니다.</p>
+          <div class="changepw-msg" id="withdrawMsg"></div>
+          <button class="changepw-withdraw-btn" onclick="confirmWithdraw()">회원 탈퇴</button>
+        </div>
       </div>
     </div>
 

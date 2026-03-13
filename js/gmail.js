@@ -104,7 +104,7 @@ async function downloadAttachment(msgId, attachmentId, filename, mimeType) {
     a.click();
     URL.revokeObjectURL(url);
   } catch {
-    alert("첨부파일 다운로드 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "첨부파일 다운로드 중 오류가 발생했습니다." });
   }
 }
 
@@ -324,7 +324,7 @@ function saveSignature() {
   const id = document.getElementById("sigEditId").value;
   const name = document.getElementById("sigEditName").value.trim();
   const content = document.getElementById("sigEditContent").innerHTML;
-  if (!name) return alert("서명 이름을 입력하세요.");
+  if (!name) { Swal.fire({ icon: "warning", title: "서명 이름을 입력하세요.", timer: 1500, showConfirmButton: false }); return; }
   const sigs = getAllSignatures();
   if (id) {
     const idx = sigs.findIndex((s) => s.id === id);
@@ -342,8 +342,17 @@ function saveSignature() {
   renderSignatureList();
   populateSignatureSelect();
 }
-function deleteSignature(id) {
-  if (!confirm("이 서명을 삭제할까요?")) return;
+async function deleteSignature(id) {
+  const result = await Swal.fire({
+    title: "이 서명을 삭제할까요?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e53935",
+    cancelButtonColor: "#aaa",
+    confirmButtonText: "삭제",
+    cancelButtonText: "취소",
+  });
+  if (!result.isConfirmed) return;
   let sigs = getAllSignatures().filter((s) => s.id !== id);
   if (sigs.length > 0 && !sigs.some((s) => s.isDefault))
     sigs[0].isDefault = true;
@@ -844,8 +853,8 @@ async function sendComposedEmail() {
   const subject = document.getElementById("composeSubject").value.trim();
   const bodyHtml = document.getElementById("composeBody").innerHTML;
 
-  if (!to) return alert("받는 사람 이메일을 입력하세요.");
-  if (!subject) return alert("제목을 입력하세요.");
+  if (!to) { Swal.fire({ icon: "warning", title: "받는 사람 이메일을 입력하세요.", timer: 1500, showConfirmButton: false }); return; }
+  if (!subject) { Swal.fire({ icon: "warning", title: "제목을 입력하세요.", timer: 1500, showConfirmButton: false }); return; }
 
   const sendBtn = document.querySelector(".compose-send-btn");
   sendBtn.textContent = "전송 중...";
@@ -873,15 +882,15 @@ async function sendComposedEmail() {
 
     if (!res.ok) {
       const err = await res.json();
-      alert("전송 실패: " + (err.error?.message || "알 수 없는 오류"));
+      Swal.fire({ icon: "error", title: "전송 실패", text: err.error?.message || "알 수 없는 오류" });
       return;
     }
 
     closeCompose();
     closeEmailModal();
-    alert("전송 완료!");
+    Swal.fire({ icon: "success", title: "전송 완료!", timer: 1500, showConfirmButton: false });
   } catch {
-    alert("전송 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "전송 중 오류가 발생했습니다." });
   } finally {
     sendBtn.textContent = "전송";
     sendBtn.disabled = false;

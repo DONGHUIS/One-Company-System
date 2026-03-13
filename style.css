@@ -2359,6 +2359,74 @@ select {
 .chat-popup-close:hover {
   opacity: 1;
 }
+.chat-history-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 2px 4px;
+  opacity: 0.8;
+}
+.chat-history-btn:hover { opacity: 1; }
+
+#chatHistoryPanel {
+  flex-direction: column;
+  border-bottom: 1px solid #e0e0e0;
+  background: #fafafa;
+  max-height: 240px;
+}
+.chat-history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+  border-bottom: 1px solid #e8e8e8;
+}
+.chat-history-header button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #888;
+}
+.chat-history-list {
+  overflow-y: auto;
+  flex: 1;
+}
+.chat-history-item {
+  padding: 9px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.15s;
+}
+.chat-history-item:hover { background: #f0f4ff; }
+.chat-history-item-title {
+  font-size: 13px;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chat-history-item-date {
+  font-size: 11px;
+  color: #999;
+  margin-top: 2px;
+}
+.chat-history-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #aaa;
+}
+.chat-session-label {
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+  padding: 6px 0 10px;
+}
 
 .chat-key-bar {
   display: flex;

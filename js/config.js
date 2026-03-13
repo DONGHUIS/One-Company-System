@@ -113,7 +113,17 @@ async function confirmWithdraw() {
   const wMsg = document.getElementById("withdrawMsg");
   wMsg.className = "changepw-msg";
 
-  if (!confirm("정말 탈퇴하시겠습니까?\n모든 데이터가 삭제되며 복구할 수 없습니다.")) return;
+  const result = await Swal.fire({
+    title: "정말 탈퇴하시겠습니까?",
+    text: "모든 데이터가 삭제되며 복구할 수 없습니다.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e53935",
+    cancelButtonColor: "#aaa",
+    confirmButtonText: "탈퇴",
+    cancelButtonText: "취소",
+  });
+  if (!result.isConfirmed) return;
 
   try {
     const res = await apiFetch("/auth/local/withdraw", { method: "DELETE" });

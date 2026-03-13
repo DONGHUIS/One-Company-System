@@ -187,14 +187,14 @@ async function uploadDriveFile(file, folderId = "root") {
     });
     if (!res.ok) {
       const err = await res.json();
-      alert("업로드 실패: " + (err.error?.message || "알 수 없는 오류"));
+      Swal.fire({ icon: "error", title: "업로드 실패", text: err.error?.message || "알 수 없는 오류" });
       return;
     }
     const uploaded = await res.json();
     status.textContent = `"${uploaded.name}" 업로드 완료!`;
     fetchRecentFiles();
   } catch {
-    alert("업로드 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "업로드 중 오류가 발생했습니다." });
   }
 }
 

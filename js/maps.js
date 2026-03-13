@@ -19,7 +19,7 @@ function setTravelMode(btn) {
 }
 
 function setMyLocation() {
-  if (!navigator.geolocation) return alert("위치 정보를 사용할 수 없습니다.");
+  if (!navigator.geolocation) { Swal.fire({ icon: "error", title: "위치 정보를 사용할 수 없습니다." }); return; }
   const btn = document.querySelector(".maps-myloc-btn");
   btn.textContent = "⏳";
   navigator.geolocation.getCurrentPosition(
@@ -43,7 +43,7 @@ function setMyLocation() {
       btn.textContent = "📍";
     },
     () => {
-      alert("위치 권한을 허용해주세요.");
+      Swal.fire({ icon: "warning", title: "위치 권한을 허용해주세요.", timer: 2000, showConfirmButton: false });
       btn.textContent = "📍";
     }
   );
@@ -55,8 +55,8 @@ function searchDirections() {
   const infoEl = document.getElementById("mapsRouteInfo");
   const container = document.getElementById("mapsContainer");
 
-  if (!origin) return alert("출발지를 입력하세요.");
-  if (!destination) return alert("목적지를 입력하세요.");
+  if (!origin) { Swal.fire({ icon: "warning", title: "출발지를 입력하세요.", timer: 1500, showConfirmButton: false }); return; }
+  if (!destination) { Swal.fire({ icon: "warning", title: "목적지를 입력하세요.", timer: 1500, showConfirmButton: false }); return; }
 
   const params = new URLSearchParams({
     key: MAPS_API_KEY,

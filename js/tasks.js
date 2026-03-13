@@ -105,14 +105,14 @@ async function addTask() {
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      alert("추가 실패: " + (err.error?.message || `오류 코드 ${res.status}`));
+      Swal.fire({ icon: "error", title: "추가 실패", text: err.error?.message || `오류 코드 ${res.status}` });
       return;
     }
     titleEl.value = "";
     setTaskDueToday();
     fetchTasks(currentTaskListId);
   } catch (e) {
-    alert("할 일 추가 중 오류가 발생했습니다: " + e.message);
+    Swal.fire({ icon: "error", title: "오류", text: "할 일 추가 중 오류가 발생했습니다." });
   } finally {
     addBtn.disabled = false;
     addBtn.textContent = "추가";
@@ -128,16 +128,25 @@ async function toggleTask(taskId, isDone) {
     });
     fetchTasks(currentTaskListId);
   } catch {
-    alert("상태 변경 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "상태 변경 중 오류가 발생했습니다." });
   }
 }
 
 async function deleteTask(taskId) {
-  if (!confirm("이 할 일을 삭제할까요?")) return;
+  const result = await Swal.fire({
+    title: "이 할 일을 삭제할까요?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e53935",
+    cancelButtonColor: "#aaa",
+    confirmButtonText: "삭제",
+    cancelButtonText: "취소",
+  });
+  if (!result.isConfirmed) return;
   try {
     await apiFetch(`/api/tasks/${currentTaskListId}/tasks/${taskId}`, { method: "DELETE" });
     fetchTasks(currentTaskListId);
   } catch {
-    alert("삭제 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "삭제 중 오류가 발생했습니다." });
   }
 }

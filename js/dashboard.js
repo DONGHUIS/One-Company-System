@@ -37,3 +37,15 @@ async function fetchDashboardUnread() {
     document.getElementById("dashUnread").textContent = unread + "개";
   } catch { /* 무시 */ }
 }
+
+async function fetchDashboardMemoCount() {
+  try {
+    const res = await apiFetch("/api/memos");
+    if (!res.ok) return;
+    const data = await res.json();
+    const count = Array.isArray(data) ? data.length : 0;
+    document.getElementById("dashUnreadIcon").textContent = "📝";
+    document.getElementById("dashUnreadLabel").textContent = "내 메모";
+    document.getElementById("dashUnread").textContent = count + "개";
+  } catch { /* 무시 */ }
+}

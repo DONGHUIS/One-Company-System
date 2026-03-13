@@ -10,6 +10,7 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   </head>
   <body>
     <div class="bg-blur b1"></div>
@@ -47,9 +48,9 @@
           </div>
         </div>
         <div class="dash-card dash-mail">
-          <div class="dash-icon">📧</div>
+          <div class="dash-icon" id="dashUnreadIcon">📧</div>
           <div class="dash-info">
-            <div class="dash-label">미읽은 메일</div>
+            <div class="dash-label" id="dashUnreadLabel">미읽은 메일</div>
             <div class="dash-value" id="dashUnread">-</div>
           </div>
         </div>
@@ -548,7 +549,18 @@
     <div class="chat-popup" id="chatPopup" style="display:none">
       <div class="chat-popup-header">
         <span>✨ Gemini AI</span>
-        <button class="chat-popup-close" onclick="toggleChat()">×</button>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="chat-history-btn" onclick="toggleChatHistory()" title="이전 대화">📋</button>
+          <button class="chat-popup-close" onclick="toggleChat()">×</button>
+        </div>
+      </div>
+      <!-- 이전 대화 목록 패널 -->
+      <div id="chatHistoryPanel" style="display:none">
+        <div class="chat-history-header">
+          <span>이전 대화</span>
+          <button onclick="toggleChatHistory()">✕</button>
+        </div>
+        <div id="chatHistoryList" class="chat-history-list"></div>
       </div>
       <div class="chat-messages" id="chatMessages"></div>
       <div class="chat-input-row">

@@ -272,10 +272,9 @@ async function saveSchedule() {
   const startDateVal = document.getElementById("scheduleStartDate").value;
   const endDateVal = document.getElementById("scheduleEndDate").value;
 
-  if (!title) return alert("일정 제목을 입력하세요!");
-  if (!startDateVal) return alert("시작일을 선택하세요!");
-  if (endDateVal && endDateVal < startDateVal)
-    return alert("종료일이 시작일보다 이전일 수 없습니다.");
+  if (!title) { Swal.fire({ icon: "warning", title: "일정 제목을 입력하세요!", timer: 1500, showConfirmButton: false }); return; }
+  if (!startDateVal) { Swal.fire({ icon: "warning", title: "시작일을 선택하세요!", timer: 1500, showConfirmButton: false }); return; }
+  if (endDateVal && endDateVal < startDateVal) { Swal.fire({ icon: "warning", title: "날짜 오류", text: "종료일이 시작일보다 이전일 수 없습니다." }); return; }
 
   const startDate = startDateVal;
   const endDate = endDateVal || startDateVal;
@@ -326,18 +325,14 @@ async function saveSchedule() {
     );
     if (!res.ok) {
       const err = await res.json();
-      alert(
-        (editingEventId ? "수정" : "저장") +
-          " 실패: " +
-          (err.error?.message || "알 수 없는 오류"),
-      );
+      Swal.fire({ icon: "error", title: (editingEventId ? "수정" : "저장") + " 실패", text: err.error?.message || "알 수 없는 오류" });
       return;
     }
     resetScheduleForm();
     document.getElementById("addScheduleForm").style.display = "none";
     await fetchCalendarEvents(calYear, calMonth);
   } catch {
-    alert("네트워크 오류가 발생했습니다");
+    Swal.fire({ icon: "error", title: "네트워크 오류", text: "잠시 후 다시 시도해주세요." });
   }
 }
 
@@ -420,14 +415,24 @@ function closeScheduleDetail(e) {
 }
 
 async function deleteCalendarEvent(eventId) {
-  if (!confirm("이 일정을 삭제할까요?")) return;
+  const result = await Swal.fire({
+    title: "이 일정을 삭제할까요?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e53935",
+    cancelButtonColor: "#aaa",
+    confirmButtonText: "삭제",
+    cancelButtonText: "취소",
+  });
+  if (!result.isConfirmed) return;
   try {
     const res = await apiFetch(`${calBase()}/events/${eventId}`, { method: "DELETE" });
     if (res.ok || res.status === 204) {
+      document.getElementById("scheduleDetailModal").style.display = "none";
       await fetchCalendarEvents(calYear, calMonth);
     }
   } catch {
-    alert("삭제 중 오류가 발생했습니다");
+    Swal.fire({ icon: "error", title: "오류", text: "삭제 중 오류가 발생했습니다." });
   }
 }
 

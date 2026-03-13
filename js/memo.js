@@ -38,7 +38,10 @@ async function addMemo() {
   const content = document.getElementById("contentInput").value.trim();
   const tag = document.getElementById("tagInput").value.trim();
 
-  if (!title && !content) return alert("내용을 입력하세요!");
+  if (!title && !content) {
+    Swal.fire({ icon: "warning", title: "내용을 입력하세요!", timer: 1500, showConfirmButton: false });
+    return;
+  }
 
   try {
     await apiFetch("/api/memos", {
@@ -47,8 +50,9 @@ async function addMemo() {
     });
     clearInputs();
     await loadMemos();
+    if (typeof fetchDashboardMemoCount === "function") fetchDashboardMemoCount();
   } catch {
-    alert("메모 저장 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "메모 저장 중 오류가 발생했습니다." });
   }
 }
 
@@ -76,7 +80,10 @@ async function updateMemo(id) {
   const content = document.getElementById("contentInput").value.trim();
   const tag = document.getElementById("tagInput").value.trim();
 
-  if (!title && !content) return alert("내용을 입력하세요!");
+  if (!title && !content) {
+    Swal.fire({ icon: "warning", title: "내용을 입력하세요!", timer: 1500, showConfirmButton: false });
+    return;
+  }
 
   try {
     await apiFetch(`/api/memos/${id}`, {
@@ -86,18 +93,30 @@ async function updateMemo(id) {
     resetAddBtn();
     clearInputs();
     await loadMemos();
+    if (typeof fetchDashboardMemoCount === "function") fetchDashboardMemoCount();
   } catch {
-    alert("메모 수정 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "메모 수정 중 오류가 발생했습니다." });
   }
 }
 
 async function deleteMemo(id) {
-  if (!confirm("메모 삭제를 진행하시면 휴지통으로 이동하며 15일후 자동삭제가 진행됩니다.")) return;
+  const result = await Swal.fire({
+    title: "메모를 삭제할까요?",
+    text: "휴지통으로 이동하며 15일 후 자동 삭제됩니다.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e53935",
+    cancelButtonColor: "#aaa",
+    confirmButtonText: "삭제",
+    cancelButtonText: "취소",
+  });
+  if (!result.isConfirmed) return;
   try {
     await apiFetch(`/api/memos/${id}`, { method: "DELETE" });
     await loadMemos();
+    if (typeof fetchDashboardMemoCount === "function") fetchDashboardMemoCount();
   } catch {
-    alert("삭제 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "삭제 중 오류가 발생했습니다." });
   }
 }
 
@@ -106,19 +125,30 @@ async function restoreMemo(id) {
     await apiFetch(`/api/memos/trash/${id}/restore`, { method: "POST" });
     await loadTrash();
     await loadMemos();
+    if (typeof fetchDashboardMemoCount === "function") fetchDashboardMemoCount();
     toggleTrashView();
   } catch {
-    alert("복구 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "복구 중 오류가 발생했습니다." });
   }
 }
 
 async function permanentDeleteMemo(id) {
-  if (!confirm("영구 삭제하시면 복구할 수 없습니다.그래도 삭제진행하시나요?")) return;
+  const result = await Swal.fire({
+    title: "영구 삭제하시겠습니까?",
+    text: "복구할 수 없습니다.",
+    icon: "error",
+    showCancelButton: true,
+    confirmButtonColor: "#e53935",
+    cancelButtonColor: "#aaa",
+    confirmButtonText: "영구 삭제",
+    cancelButtonText: "취소",
+  });
+  if (!result.isConfirmed) return;
   try {
     await apiFetch(`/api/memos/trash/${id}`, { method: "DELETE" });
     await loadTrash();
   } catch {
-    alert("영구 삭제 중 오류가 발생했습니다.");
+    Swal.fire({ icon: "error", title: "오류", text: "영구 삭제 중 오류가 발생했습니다." });
   }
 }
 

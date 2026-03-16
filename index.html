@@ -209,6 +209,7 @@
             <div class="gmail-tabs">
               <button class="gmail-tab active" id="tabInbox" onclick="switchMailbox('inbox')">📥 받은 메일함</button>
               <button class="gmail-tab" id="tabSent" onclick="switchMailbox('sent')">📤 보낸 편지함</button>
+              <button class="gmail-tab" id="tabScheduled" onclick="switchMailbox('scheduled')">⏰ 예약 메일함</button>
             </div>
             <div class="gmail-header-btns">
               <button class="gmail-compose-btn" onclick="openNewCompose()" title="새 메일 작성">✏️ 새 메일</button>
@@ -408,6 +409,22 @@
         </div>
         <div class="email-modal-attachments" id="emailModalAttachments" style="display:none"></div>
         <div class="email-modal-body" id="emailModalBody"></div>
+      </div>
+    </div>
+
+    <!-- 예약 메일 상세 모달 -->
+    <div id="scheduledDetailModal" class="email-modal-overlay" onclick="closeScheduledDetail(event)" style="display:none">
+      <div class="email-modal" style="max-width:680px">
+        <button class="email-modal-close" onclick="closeScheduledDetail()">×</button>
+        <div class="email-modal-header">
+          <div class="email-modal-subject" id="schedDetailSubject"></div>
+          <div class="email-modal-meta">
+            <span id="schedDetailTo"></span>
+            <span id="schedDetailCc" style="display:none"></span>
+            <span id="schedDetailStatus"></span>
+          </div>
+        </div>
+        <div class="email-modal-body" id="schedDetailBody"></div>
       </div>
     </div>
 

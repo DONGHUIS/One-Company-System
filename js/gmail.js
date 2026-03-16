@@ -15,10 +15,72 @@ function switchMailbox(type) {
   document.getElementById("gmailSearchClearBtn").style.display = "none";
   document.getElementById("tabInbox").classList.toggle("active", type === "inbox");
   document.getElementById("tabSent").classList.toggle("active", type === "sent");
-  // 탭 전환 시 해당 메일함 첫 페이지부터
+  document.getElementById("tabScheduled").classList.toggle("active", type === "scheduled");
+
+  if (type === "scheduled") {
+    fetchScheduledMailbox();
+    return;
+  }
+  if (!emailPageState[type]) emailPageState[type] = { tokens: [null], page: 0 };
   emailPageState[type].tokens = [null];
   emailPageState[type].page = 0;
   fetchEmails();
+}
+
+async function fetchScheduledMailbox() {
+  const status = document.getElementById("gmailStatus");
+  const list = document.getElementById("gmailList");
+  // 페이지네이션 제거
+  const existing = document.getElementById("gmailPagination");
+  if (existing) existing.remove();
+
+  status.textContent = "예약 메일 불러오는 중...";
+  list.innerHTML = "";
+
+  try {
+    // all statuses
+    const [pendingRes, sentRes, failedRes] = await Promise.all([
+      apiFetch("/api/gmail/scheduled?status=pending").then(r => r.json()),
+      apiFetch("/api/gmail/scheduled?status=sent").then(r => r.json()),
+      apiFetch("/api/gmail/scheduled?status=failed").then(r => r.json()),
+    ]);
+    const all = [...pendingRes, ...sentRes, ...failedRes]
+      .sort((a, b) => new Date(b.scheduled_at) - new Date(a.scheduled_at));
+
+    if (!all.length) {
+      status.textContent = "";
+      list.innerHTML = '<p class="gmail-empty">예약된 메일이 없습니다.</p>';
+      return;
+    }
+
+    status.textContent = `총 ${all.length}건`;
+    list.innerHTML = all.map(item => {
+      const dt = new Date(item.scheduled_at).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+      const sentDt = item.sent_at ? new Date(item.sent_at).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : null;
+      const badgeMap = { pending: "⏳", sent: "✅", failed: "❌" };
+      const badge = badgeMap[item.status] || "";
+      const metaLine = item.status === "sent"
+        ? `발송 완료: ${sentDt}`
+        : item.status === "failed"
+          ? `실패: ${item.error_msg || "알 수 없음"}`
+          : `발송 예정: ${dt}`;
+      const cancelBtn = item.status === "pending"
+        ? `<button class="scheduled-cancel-btn" style="align-self:center;flex-shrink:0" onclick="event.stopPropagation();cancelScheduled(${item.id})">취소</button>`
+        : "";
+      return `
+      <div class="gmail-item" style="cursor:pointer" onclick="showScheduledDetail(${item.id})">
+        <div class="gmail-from">${badge} To: ${item.to_addr}${item.cc ? ` · CC: ${item.cc}` : ""}</div>
+        <div class="gmail-subject">${item.subject || "(제목 없음)"}</div>
+        <div class="gmail-snippet" style="color:${item.status === 'failed' ? '#c62828' : item.status === 'sent' ? '#2e7d32' : '#888'}">${metaLine}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+          <div class="gmail-date">${dt}</div>
+          ${cancelBtn}
+        </div>
+      </div>`;
+    }).join("");
+  } catch {
+    status.textContent = "불러오기 실패";
+  }
 }
 
 async function searchEmails() {
@@ -1191,6 +1253,64 @@ async function cancelScheduled(id) {
     Swal.fire({ icon: "success", title: "예약이 취소되었습니다.", timer: 1500, showConfirmButton: false });
     await loadScheduledTab("pending");
   }
+}
+
+// ── 예약 메일 상세 보기 ──
+async function showScheduledDetail(id) {
+  const modal = document.getElementById("scheduledDetailModal");
+  modal.style.display = "flex";
+  document.getElementById("schedDetailSubject").textContent = "불러오는 중...";
+  document.getElementById("schedDetailBody").innerHTML = "";
+  document.getElementById("schedDetailTo").textContent = "";
+  document.getElementById("schedDetailCc").style.display = "none";
+  document.getElementById("schedDetailStatus").textContent = "";
+
+  try {
+    const res = await apiFetch(`/api/gmail/scheduled/${id}`);
+    const d = await res.json();
+
+    const statusMap = { pending: "⏳ 발송 대기", sending: "🔄 발송 중", sent: "✅ 발송 완료", failed: "❌ 발송 실패" };
+    const dtScheduled = new Date(d.scheduledAt).toLocaleString("ko-KR");
+    const dtSent = d.sentAt ? new Date(d.sentAt).toLocaleString("ko-KR") : null;
+
+    document.getElementById("schedDetailSubject").textContent = d.subject || "(제목 없음)";
+    document.getElementById("schedDetailTo").textContent = `To: ${d.to}`;
+
+    if (d.cc) {
+      const ccEl = document.getElementById("schedDetailCc");
+      ccEl.textContent = `CC: ${d.cc}`;
+      ccEl.style.display = "inline";
+    }
+
+    const statusLine = dtSent
+      ? `${statusMap[d.status] || d.status} · 예약: ${dtScheduled} · 발송: ${dtSent}`
+      : `${statusMap[d.status] || d.status} · 예약: ${dtScheduled}`;
+    document.getElementById("schedDetailStatus").textContent = statusLine;
+
+    const bodyEl = document.getElementById("schedDetailBody");
+    const ct = (d.contentType || "").toLowerCase();
+    if (ct.includes("html")) {
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = "width:100%;min-height:300px;border:none;";
+      iframe.sandbox = "allow-same-origin";
+      bodyEl.appendChild(iframe);
+      iframe.contentDocument.open();
+      iframe.contentDocument.write(d.body);
+      iframe.contentDocument.close();
+      iframe.onload = () => {
+        iframe.style.height = iframe.contentDocument.body.scrollHeight + 30 + "px";
+      };
+    } else {
+      bodyEl.innerHTML = `<pre style="white-space:pre-wrap;font-family:inherit;font-size:14px">${d.body.replace(/</g,"&lt;")}</pre>`;
+    }
+  } catch {
+    document.getElementById("schedDetailSubject").textContent = "불러오기 실패";
+  }
+}
+
+function closeScheduledDetail(e) {
+  if (e && e.target !== document.getElementById("scheduledDetailModal")) return;
+  document.getElementById("scheduledDetailModal").style.display = "none";
 }
 
 // X 버튼: 컴포즈가 열려있으면 임시저장 확인, 아니면 바로 닫기

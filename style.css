@@ -1851,6 +1851,63 @@ select {
   font-size: 0.8rem;
   padding: 20px 0;
 }
+.gmail-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 10px 0 4px;
+  font-size: 13px;
+  color: #555;
+}
+.gmail-pagination button {
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.gmail-pagination button:hover:not(:disabled) { background: #e8eeff; }
+.gmail-pagination button:disabled { opacity: 0.4; cursor: default; }
+.gmail-search-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 4px;
+}
+.gmail-search-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #ddd;
+  border-radius: 20px;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.gmail-search-input:focus { border-color: #4f8ef7; }
+.gmail-search-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+.gmail-search-btn:hover { background: #f0f0f0; }
+.gmail-search-clear-btn {
+  background: none;
+  border: none;
+  font-size: 13px;
+  color: #888;
+  cursor: pointer;
+  padding: 4px 7px;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+.gmail-search-clear-btn:hover { background: #f0f0f0; color: #333; }
 
 .gmail-item {
   cursor: pointer;
@@ -2679,9 +2736,10 @@ select {
 
 .email-modal-meta {
   display: flex;
-  gap: 12px;
+  gap: 4px;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
+  flex-direction: column;
 }
 
 .email-modal-meta span {
@@ -2691,6 +2749,13 @@ select {
 
 .email-modal-meta span:first-child {
   color: var(--accent2);
+}
+
+.email-modal-meta-cc {
+  color: #777 !important;
+  background: #f0f0f0;
+  border-radius: 4px;
+  padding: 1px 6px;
 }
 
 .email-modal-attachments {
@@ -2931,6 +2996,149 @@ select {
   cursor: pointer;
   color: var(--text-muted);
 }
+.compose-schedule-wrap { position: relative; }
+.compose-schedule-btn {
+  padding: 6px 12px;
+  background: #fff8e1;
+  border: 1px solid #ffd54f;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  cursor: pointer;
+  color: #795548;
+  font-family: inherit;
+}
+.compose-schedule-btn:hover { background: #fff3cd; }
+.schedule-picker {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 100;
+  min-width: 240px;
+}
+.schedule-picker-label {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 6px;
+}
+.schedule-datetime-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.schedule-confirm-btn {
+  width: 100%;
+  padding: 7px;
+  background: #4f8ef7;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.schedule-confirm-btn:hover { background: #3a7de8; }
+.compose-schedule-list-btn {
+  padding: 6px 10px;
+  background: none;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.compose-schedule-list-btn:hover { background: #f5f5f5; }
+/* 예약 목록 모달 */
+.scheduled-modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 3000;
+}
+.scheduled-modal {
+  background: white;
+  border-radius: 14px;
+  width: 480px;
+  max-width: 95vw;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+}
+.scheduled-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  font-weight: 600;
+  border-bottom: 1px solid #eee;
+}
+.scheduled-modal-header button {
+  background: none; border: none; font-size: 18px; cursor: pointer; color: #888;
+}
+.scheduled-list-body { overflow-y: auto; padding: 8px 0; }
+.scheduled-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-bottom: 1px solid #f5f5f5;
+}
+.scheduled-item-subject { font-size: 14px; font-weight: 500; color: #333; }
+.scheduled-item-meta { font-size: 12px; color: #888; margin-top: 3px; }
+.scheduled-cancel-btn {
+  padding: 4px 12px;
+  background: #fff0f0;
+  border: 1px solid #ffcdd2;
+  border-radius: 6px;
+  color: #e53935;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.scheduled-cancel-btn:hover { background: #ffcdd2; }
+.scheduled-empty { text-align: center; padding: 30px; color: #aaa; font-size: 14px; }
+.scheduled-tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  padding: 0 14px;
+  gap: 4px;
+}
+.scheduled-tab {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 13px;
+  cursor: pointer;
+  color: #888;
+  font-family: inherit;
+  margin-bottom: -1px;
+}
+.scheduled-tab.active {
+  color: #4f8ef7;
+  border-bottom-color: #4f8ef7;
+  font-weight: 600;
+}
+.sched-badge {
+  display: inline-block;
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 10px;
+  margin-right: 4px;
+  font-weight: 600;
+}
+.sched-badge.pending { background: #fff8e1; color: #f57f17; }
+.sched-badge.sent    { background: #e8f5e9; color: #2e7d32; }
+.sched-badge.failed  { background: #ffebee; color: #c62828; }
 
 .compose-dropzone {
   border: 2px dashed var(--border);

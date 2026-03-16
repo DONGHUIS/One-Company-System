@@ -1,14 +1,44 @@
 // ── Gmail 기능 ──
 let currentMailbox = "inbox";
+let currentSearchQuery = "";
+// 페이징: 각 메일함마다 pageToken 스택 관리
+const emailPageState = {
+  inbox:  { tokens: [null], page: 0 },
+  sent:   { tokens: [null], page: 0 },
+  search: { tokens: [null], page: 0 },
+};
 
 function switchMailbox(type) {
   currentMailbox = type;
+  currentSearchQuery = "";
+  document.getElementById("gmailSearchInput").value = "";
+  document.getElementById("gmailSearchClearBtn").style.display = "none";
   document.getElementById("tabInbox").classList.toggle("active", type === "inbox");
   document.getElementById("tabSent").classList.toggle("active", type === "sent");
+  // 탭 전환 시 해당 메일함 첫 페이지부터
+  emailPageState[type].tokens = [null];
+  emailPageState[type].page = 0;
   fetchEmails();
 }
 
-async function fetchEmails() {
+async function searchEmails() {
+  const q = document.getElementById("gmailSearchInput").value.trim();
+  if (!q) return;
+  currentSearchQuery = q;
+  emailPageState.search.tokens = [null];
+  emailPageState.search.page = 0;
+  document.getElementById("gmailSearchClearBtn").style.display = "inline-block";
+  await fetchSearchResults();
+}
+
+function clearEmailSearch() {
+  currentSearchQuery = "";
+  document.getElementById("gmailSearchInput").value = "";
+  document.getElementById("gmailSearchClearBtn").style.display = "none";
+  fetchEmails();
+}
+
+async function fetchEmails(pageToken = null) {
   const status = document.getElementById("gmailStatus");
   const list = document.getElementById("gmailList");
   const isSent = currentMailbox === "sent";
@@ -16,12 +46,23 @@ async function fetchEmails() {
   list.innerHTML = "";
 
   try {
-    const listRes = await apiFetch(isSent ? "/api/gmail/sent" : "/api/gmail/inbox");
-    const { messages } = await listRes.json();
+    const base = isSent ? "/api/gmail/sent" : "/api/gmail/inbox";
+    const url = pageToken ? `${base}?pageToken=${encodeURIComponent(pageToken)}` : base;
+    const listRes = await apiFetch(url);
+    const data = await listRes.json();
+    const { messages, nextPageToken } = data;
+
     if (!messages?.length) {
       status.textContent = "";
       list.innerHTML = `<p class="gmail-empty">${isSent ? "보낸 메일이 없습니다" : "받은 메일이 없습니다"}</p>`;
+      renderEmailPagination(nextPageToken);
       return;
+    }
+
+    // nextPageToken을 스택에 저장 (아직 없는 경우만)
+    const state = emailPageState[currentMailbox];
+    if (nextPageToken && state.tokens.length <= state.page + 1) {
+      state.tokens.push(nextPageToken);
     }
 
     const details = await Promise.all(
@@ -32,45 +73,126 @@ async function fetchEmails() {
       ),
     );
 
-    status.textContent = `최근 ${details.length}개 메일`;
+    status.textContent = `${state.page * 10 + 1}–${state.page * 10 + details.length}번째 메일`;
     if (!isSent) fetchDashboardUnread();
-    list.innerHTML = details
-      .map((msg) => {
-        const h = (name) =>
-          msg.payload.headers.find((x) => x.name === name)?.value || "";
-        const subject = h("Subject") || "(제목 없음)";
-        const senderOrRecipient = isSent
-          ? (h("To").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || h("To"))
-          : (h("From").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || h("From"));
-        const dateStr = (() => {
-          const d = new Date(h("Date"));
-          return isNaN(d)
-            ? h("Date")
-            : d.toLocaleString("ko-KR", {
-                month: "2-digit",
-                day: "2-digit",
-                hour: "2-digit",
-                minute: "2-digit",
-              });
-        })();
-        const snippet = msg.snippet || "";
-        const isUnread = msg.labelIds?.includes("UNREAD");
-
-        return `
-        <div class="gmail-item${isUnread ? " gmail-unread" : ""}" onclick="showEmailDetail('${msg.id}')">
-          <div class="gmail-from">
-            ${isUnread ? '<span class="gmail-unread-dot"></span>' : ""}
-            ${isSent ? "받는 사람: " : ""}${senderOrRecipient}
-          </div>
-          <div class="gmail-subject">${subject}</div>
-          <div class="gmail-snippet">${snippet}</div>
-          <div class="gmail-date">${dateStr}</div>
-        </div>`;
-      })
-      .join("");
+    list.innerHTML = renderEmailList(details, isSent);
+    renderEmailPagination(nextPageToken);
   } catch (e) {
     status.textContent = "메일을 불러올 수 없습니다";
   }
+}
+
+function renderEmailList(details, isSent) {
+  return details.map((msg) => {
+    const h = (name) => msg.payload.headers.find((x) => x.name === name)?.value || "";
+    const subject = h("Subject") || "(제목 없음)";
+    const senderOrRecipient = isSent
+      ? (h("To").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || h("To"))
+      : (h("From").replace(/<[^>]+>/, "").replace(/"/g, "").trim() || h("From"));
+    const dateStr = (() => {
+      const d = new Date(h("Date"));
+      return isNaN(d) ? h("Date") : d.toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+    })();
+    const snippet = msg.snippet || "";
+    const isUnread = msg.labelIds?.includes("UNREAD");
+    return `
+    <div class="gmail-item${isUnread ? " gmail-unread" : ""}" onclick="showEmailDetail('${msg.id}')">
+      <div class="gmail-from">${isUnread ? '<span class="gmail-unread-dot"></span>' : ""}${isSent ? "받는 사람: " : ""}${senderOrRecipient}</div>
+      <div class="gmail-subject">${subject}</div>
+      <div class="gmail-snippet">${snippet}</div>
+      <div class="gmail-date">${dateStr}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderEmailPagination(nextPageToken, isSearch = false) {
+  const stateKey = isSearch ? "search" : currentMailbox;
+  const state = emailPageState[stateKey];
+  const existing = document.getElementById("gmailPagination");
+  if (existing) existing.remove();
+
+  if (state.page === 0 && !nextPageToken) return;
+
+  const prevFn = isSearch ? "searchPrevPage()" : "emailPrevPage()";
+  const nextFn = isSearch ? "searchNextPage()" : "emailNextPage()";
+  const div = document.createElement("div");
+  div.id = "gmailPagination";
+  div.className = "gmail-pagination";
+  div.innerHTML = `
+    <button onclick="${prevFn}" ${state.page === 0 ? "disabled" : ""}>&#8249; 이전</button>
+    <span>${state.page + 1}페이지</span>
+    <button onclick="${nextFn}" ${!nextPageToken ? "disabled" : ""}>다음 &#8250;</button>
+  `;
+  document.getElementById("gmailList").after(div);
+}
+
+function emailPrevPage() {
+  const state = emailPageState[currentMailbox];
+  if (state.page <= 0) return;
+  state.page--;
+  fetchEmails(state.tokens[state.page]);
+}
+
+function emailNextPage() {
+  const state = emailPageState[currentMailbox];
+  const nextToken = state.tokens[state.page + 1];
+  if (!nextToken) return;
+  state.page++;
+  fetchEmails(nextToken);
+}
+
+async function fetchSearchResults(pageToken = null) {
+  const status = document.getElementById("gmailStatus");
+  const list = document.getElementById("gmailList");
+  status.textContent = `"${currentSearchQuery}" 검색 중...`;
+  list.innerHTML = "";
+
+  try {
+    const qs = new URLSearchParams({ q: currentSearchQuery });
+    if (pageToken) qs.set("pageToken", pageToken);
+    const listRes = await apiFetch(`/api/gmail/search?${qs}`);
+    const { messages, nextPageToken } = await listRes.json();
+
+    const state = emailPageState.search;
+    if (nextPageToken && state.tokens.length <= state.page + 1) {
+      state.tokens.push(nextPageToken);
+    }
+
+    if (!messages?.length) {
+      status.textContent = `"${currentSearchQuery}" 검색 결과 없음`;
+      list.innerHTML = `<p class="gmail-empty">검색 결과가 없습니다.</p>`;
+      renderEmailPagination(null, true);
+      return;
+    }
+
+    const details = await Promise.all(
+      messages.map((m) =>
+        apiFetch(`/api/gmail/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`)
+          .then((r) => r.json())
+      )
+    );
+
+    status.textContent = `"${currentSearchQuery}" — ${state.page * 10 + 1}–${state.page * 10 + details.length}번째 결과`;
+    list.innerHTML = renderEmailList(details, false);
+    renderEmailPagination(nextPageToken, true);
+  } catch {
+    status.textContent = "검색 중 오류가 발생했습니다.";
+  }
+}
+
+function searchPrevPage() {
+  const state = emailPageState.search;
+  if (state.page <= 0) return;
+  state.page--;
+  fetchSearchResults(state.tokens[state.page]);
+}
+
+function searchNextPage() {
+  const state = emailPageState.search;
+  const nextToken = state.tokens[state.page + 1];
+  if (!nextToken) return;
+  state.page++;
+  fetchSearchResults(nextToken);
 }
 
 // ── 메일 상세 보기 ──
@@ -141,6 +263,9 @@ async function showEmailDetail(msgId) {
   const modal = document.getElementById("emailModal");
   document.getElementById("emailModalSubject").textContent = "";
   document.getElementById("emailModalFrom").textContent = "";
+  document.getElementById("emailModalTo").textContent = "";
+  document.getElementById("emailModalCc").textContent = "";
+  document.getElementById("emailModalCc").style.display = "none";
   document.getElementById("emailModalDate").textContent = "";
   document.getElementById("emailModalBody").innerHTML =
     `<div class="email-modal-loading">메일 불러오는 중...</div>`;
@@ -152,12 +277,23 @@ async function showEmailDetail(msgId) {
     const h = (name) =>
       msg.payload.headers.find((x) => x.name === name)?.value || "";
 
+    // "홍길동 <email@example.com>" → "홍길동 (email@example.com)"
+    // "<email@example.com>" → "email@example.com"
+    function fmtAddr(raw) {
+      const match = raw.match(/^"?([^"<]+?)"?\s*<(.+?)>$/);
+      if (match) {
+        const name = match[1].trim();
+        const email = match[2].trim();
+        return name ? `${name} (${email})` : email;
+      }
+      return raw.replace(/[<>]/g, "").trim();
+    }
+    function fmtAddrList(raw) {
+      return raw.split(/,(?![^<]*>)/).map(a => fmtAddr(a.trim())).filter(Boolean).join(", ");
+    }
+
     const subject = h("Subject") || "(제목 없음)";
-    const from =
-      h("From")
-        .replace(/<[^>]+>/, "")
-        .replace(/"/g, "")
-        .trim() || h("From");
+    const from = fmtAddr(h("From")) || h("From");
     const dateStr = (() => {
       const d = new Date(h("Date"));
       return isNaN(d)
@@ -171,9 +307,21 @@ async function showEmailDetail(msgId) {
           });
     })();
 
+    const toRaw = h("To");
+    const ccRaw = h("Cc");
+    const toDisplay = fmtAddrList(toRaw);
+    const ccDisplay = fmtAddrList(ccRaw);
+
     document.getElementById("emailModalSubject").textContent = subject;
-    document.getElementById("emailModalFrom").textContent =
-      "보낸 사람: " + from;
+    document.getElementById("emailModalFrom").textContent = "보낸 사람: " + from;
+    document.getElementById("emailModalTo").textContent = toDisplay ? "받는 사람: " + toDisplay : "";
+    const ccEl = document.getElementById("emailModalCc");
+    if (ccDisplay) {
+      ccEl.textContent = "참조: " + ccDisplay;
+      ccEl.style.display = "inline";
+    } else {
+      ccEl.style.display = "none";
+    }
     document.getElementById("emailModalDate").textContent = dateStr;
 
     const rawFrom = h("From");
@@ -894,6 +1042,154 @@ async function sendComposedEmail() {
   } finally {
     sendBtn.textContent = "전송";
     sendBtn.disabled = false;
+  }
+}
+
+// ── 예약 발송 ──
+function toggleSchedulePicker() {
+  const picker = document.getElementById("schedulePicker");
+  const isOpen = picker.style.display !== "none";
+  picker.style.display = isOpen ? "none" : "block";
+  if (!isOpen) {
+    // 기본값: 1시간 후
+    const d = new Date(Date.now() + 60 * 60 * 1000);
+    d.setSeconds(0, 0);
+    const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000)
+      .toISOString().slice(0, 16);
+    document.getElementById("scheduleDateTime").value = local;
+  }
+}
+
+async function sendScheduledEmail() {
+  const to = document.getElementById("composeTo").value.trim();
+  const cc = document.getElementById("composeCc").value.trim();
+  const subject = document.getElementById("composeSubject").value.trim();
+  const bodyHtml = document.getElementById("composeBody").innerHTML;
+  const scheduledAt = document.getElementById("scheduleDateTime").value;
+
+  if (!to) { Swal.fire({ icon: "warning", title: "받는 사람 이메일을 입력하세요.", timer: 1500, showConfirmButton: false }); return; }
+  if (!subject) { Swal.fire({ icon: "warning", title: "제목을 입력하세요.", timer: 1500, showConfirmButton: false }); return; }
+  if (!scheduledAt) { Swal.fire({ icon: "warning", title: "예약 시간을 선택하세요.", timer: 1500, showConfirmButton: false }); return; }
+  if (new Date(scheduledAt) <= new Date()) { Swal.fire({ icon: "warning", title: "예약 시간은 현재 이후여야 합니다." }); return; }
+
+  try {
+    const raw = await buildMimeRaw({
+      to, cc, subject, bodyHtml,
+      files: composeFiles,
+      threadId: currentEmailMeta?.threadId,
+      messageId: currentEmailMeta?.messageId,
+    });
+
+    const res = await apiFetch("/api/gmail/scheduled", {
+      method: "POST",
+      body: JSON.stringify({
+        to, cc, subject, raw,
+        threadId: currentEmailMeta?.threadId || null,
+        scheduledAt,
+      }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      Swal.fire({ icon: "error", title: "예약 실패", text: err.error || "알 수 없는 오류" });
+      return;
+    }
+
+    const dt = new Date(scheduledAt).toLocaleString("ko-KR", {
+      month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit"
+    });
+    Swal.fire({ icon: "success", title: "예약 완료!", text: `${dt} 에 발송됩니다.`, timer: 2500, showConfirmButton: false });
+    closeCompose();
+    closeEmailModal();
+  } catch {
+    Swal.fire({ icon: "error", title: "오류", text: "예약 중 오류가 발생했습니다." });
+  }
+}
+
+let currentScheduledTab = "pending";
+
+async function showScheduledList() {
+  document.getElementById("scheduledListModal").style.display = "flex";
+  await loadScheduledTab(currentScheduledTab);
+}
+
+async function switchScheduledTab(status) {
+  currentScheduledTab = status;
+  ["pending", "sent", "failed"].forEach(s => {
+    document.getElementById(`stab-${s}`).classList.toggle("active", s === status);
+  });
+  await loadScheduledTab(status);
+}
+
+async function loadScheduledTab(status) {
+  const body = document.getElementById("scheduledListBody");
+  body.innerHTML = '<div class="scheduled-empty">불러오는 중...</div>';
+
+  try {
+    const res = await apiFetch(`/api/gmail/scheduled?status=${status}`);
+    const list = await res.json();
+
+    if (!list.length) {
+      const labels = { pending: "대기 중인 예약이 없습니다.", sent: "발송 완료된 메일이 없습니다.", failed: "실패한 메일이 없습니다." };
+      body.innerHTML = `<div class="scheduled-empty">${labels[status]}</div>`;
+      return;
+    }
+
+    body.innerHTML = list.map(item => {
+      const scheduledDt = new Date(item.scheduled_at).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+      const sentDt = item.sent_at ? new Date(item.sent_at).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" }) : null;
+
+      const statusBadge = {
+        pending: `<span class="sched-badge pending">대기중</span>`,
+        sent:    `<span class="sched-badge sent">발송완료</span>`,
+        failed:  `<span class="sched-badge failed">실패</span>`,
+      }[item.status];
+
+      const metaLine = item.status === "sent"
+        ? `To: ${item.to_addr} · 예약: ${scheduledDt} · 발송: ${sentDt}`
+        : item.status === "failed"
+          ? `To: ${item.to_addr} · 예약: ${scheduledDt} · 사유: ${item.error_msg || "알 수 없음"}`
+          : `To: ${item.to_addr} · ${scheduledDt} 발송 예정`;
+
+      const actionBtn = item.status === "pending"
+        ? `<button class="scheduled-cancel-btn" onclick="cancelScheduled(${item.id})">취소</button>`
+        : "";
+
+      return `
+      <div class="scheduled-item">
+        <div class="scheduled-item-info">
+          <div class="scheduled-item-subject">${statusBadge} ${item.subject || "(제목 없음)"}</div>
+          <div class="scheduled-item-meta">${metaLine}</div>
+        </div>
+        ${actionBtn}
+      </div>`;
+    }).join("");
+  } catch {
+    body.innerHTML = '<div class="scheduled-empty">불러오기 실패</div>';
+  }
+}
+
+function closeScheduledList(e) {
+  if (e && e.target !== document.getElementById("scheduledListModal")) return;
+  document.getElementById("scheduledListModal").style.display = "none";
+}
+
+async function cancelScheduled(id) {
+  const result = await Swal.fire({
+    title: "예약을 취소할까요?",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#e53935",
+    cancelButtonColor: "#aaa",
+    confirmButtonText: "취소하기",
+    cancelButtonText: "닫기",
+  });
+  if (!result.isConfirmed) return;
+
+  const res = await apiFetch(`/api/gmail/scheduled/${id}`, { method: "DELETE" });
+  if (res.ok) {
+    Swal.fire({ icon: "success", title: "예약이 취소되었습니다.", timer: 1500, showConfirmButton: false });
+    await loadScheduledTab("pending");
   }
 }
 

@@ -217,6 +217,11 @@
               <button class="gmail-refresh-btn" id="gmailRefreshBtn" onclick="fetchEmails()" title="새로고침">↻</button>
             </div>
           </div>
+          <div class="gmail-search-row">
+            <input type="text" id="gmailSearchInput" class="gmail-search-input" placeholder="메일 검색..." onkeydown="if(event.key==='Enter') searchEmails()" />
+            <button class="gmail-search-btn" onclick="searchEmails()">🔍</button>
+            <button class="gmail-search-clear-btn" id="gmailSearchClearBtn" onclick="clearEmailSearch()" style="display:none">✕</button>
+          </div>
           <div id="gmailStatus" class="gmail-status">메일 불러오는 중...</div>
           <div id="gmailList"></div>
         </div>
@@ -304,6 +309,8 @@
           <div class="email-modal-subject" id="emailModalSubject"></div>
           <div class="email-modal-meta">
             <span id="emailModalFrom"></span>
+            <span id="emailModalTo" class="email-modal-meta-to"></span>
+            <span id="emailModalCc" class="email-modal-meta-cc" style="display:none"></span>
             <span id="emailModalDate"></span>
           </div>
         </div>
@@ -387,11 +394,36 @@
           </div>
           <div class="compose-btns">
             <button class="compose-send-btn" onclick="sendComposedEmail()">전송</button>
+            <div class="compose-schedule-wrap">
+              <button class="compose-schedule-btn" onclick="toggleSchedulePicker()">⏰ 예약</button>
+              <div id="schedulePicker" class="schedule-picker" style="display:none">
+                <label class="schedule-picker-label">발송 예약 시간</label>
+                <input type="datetime-local" id="scheduleDateTime" class="schedule-datetime-input" />
+                <button class="schedule-confirm-btn" onclick="sendScheduledEmail()">예약 확인</button>
+              </div>
+            </div>
+            <button class="compose-schedule-list-btn" onclick="showScheduledList()" title="예약 목록">📋</button>
             <button class="compose-cancel-btn" onclick="tryCloseCompose()">취소</button>
           </div>
         </div>
         <div class="email-modal-attachments" id="emailModalAttachments" style="display:none"></div>
         <div class="email-modal-body" id="emailModalBody"></div>
+      </div>
+    </div>
+
+    <!-- 예약 메일 목록 모달 -->
+    <div id="scheduledListModal" class="scheduled-modal-overlay" onclick="closeScheduledList(event)" style="display:none">
+      <div class="scheduled-modal">
+        <div class="scheduled-modal-header">
+          <span>⏰ 예약 발송 관리</span>
+          <button onclick="closeScheduledList()">×</button>
+        </div>
+        <div class="scheduled-tabs">
+          <button class="scheduled-tab active" id="stab-pending" onclick="switchScheduledTab('pending')">대기중</button>
+          <button class="scheduled-tab" id="stab-sent" onclick="switchScheduledTab('sent')">발송완료</button>
+          <button class="scheduled-tab" id="stab-failed" onclick="switchScheduledTab('failed')">실패</button>
+        </div>
+        <div id="scheduledListBody" class="scheduled-list-body">불러오는 중...</div>
       </div>
     </div>
 

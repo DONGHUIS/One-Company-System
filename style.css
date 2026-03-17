@@ -1821,6 +1821,19 @@ select {
   flex-shrink: 0;
 }
 
+.gmail-cc-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  background: #6b7280;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-right: 5px;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
 .gmail-subject {
   font-size: 0.8rem;
   color: var(--text);

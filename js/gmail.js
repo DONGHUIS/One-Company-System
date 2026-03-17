@@ -5,6 +5,7 @@ let currentSearchQuery = "";
 const emailPageState = {
   inbox:  { tokens: [null], page: 0 },
   sent:   { tokens: [null], page: 0 },
+  cc:     { tokens: [null], page: 0 },
   search: { tokens: [null], page: 0 },
 };
 
@@ -15,6 +16,7 @@ function switchMailbox(type) {
   document.getElementById("gmailSearchClearBtn").style.display = "none";
   document.getElementById("tabInbox").classList.toggle("active", type === "inbox");
   document.getElementById("tabSent").classList.toggle("active", type === "sent");
+  document.getElementById("tabCc").classList.toggle("active", type === "cc");
   document.getElementById("tabScheduled").classList.toggle("active", type === "scheduled");
 
   if (type === "scheduled") {
@@ -104,11 +106,12 @@ async function fetchEmails(pageToken = null) {
   const status = document.getElementById("gmailStatus");
   const list = document.getElementById("gmailList");
   const isSent = currentMailbox === "sent";
+  const isCc = currentMailbox === "cc";
   status.textContent = "메일 불러오는 중...";
   list.innerHTML = "";
 
   try {
-    const base = isSent ? "/api/gmail/sent" : "/api/gmail/inbox";
+    const base = isSent ? "/api/gmail/sent" : isCc ? "/api/gmail/cc" : "/api/gmail/inbox";
     const url = pageToken ? `${base}?pageToken=${encodeURIComponent(pageToken)}` : base;
     const listRes = await apiFetch(url);
     const data = await listRes.json();
@@ -116,7 +119,7 @@ async function fetchEmails(pageToken = null) {
 
     if (!messages?.length) {
       status.textContent = "";
-      list.innerHTML = `<p class="gmail-empty">${isSent ? "보낸 메일이 없습니다" : "받은 메일이 없습니다"}</p>`;
+      list.innerHTML = `<p class="gmail-empty">${isSent ? "보낸 메일이 없습니다" : isCc ? "참조로 받은 메일이 없습니다" : "받은 메일이 없습니다"}</p>`;
       renderEmailPagination(nextPageToken);
       return;
     }
@@ -130,21 +133,21 @@ async function fetchEmails(pageToken = null) {
     const details = await Promise.all(
       messages.map((m) =>
         apiFetch(
-          `/api/gmail/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`
+          `/api/gmail/messages/${m.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Cc&metadataHeaders=Date`
         ).then((r) => r.json()),
       ),
     );
 
     status.textContent = `${state.page * 10 + 1}–${state.page * 10 + details.length}번째 메일`;
-    if (!isSent) fetchDashboardUnread();
-    list.innerHTML = renderEmailList(details, isSent);
+    if (!isSent && !isCc) fetchDashboardUnread();
+    list.innerHTML = renderEmailList(details, isSent, isCc);
     renderEmailPagination(nextPageToken);
   } catch (e) {
     status.textContent = "메일을 불러올 수 없습니다";
   }
 }
 
-function renderEmailList(details, isSent) {
+function renderEmailList(details, isSent, isCc = false) {
   return details.map((msg) => {
     const h = (name) => msg.payload.headers.find((x) => x.name === name)?.value || "";
     const subject = h("Subject") || "(제목 없음)";
@@ -157,9 +160,10 @@ function renderEmailList(details, isSent) {
     })();
     const snippet = msg.snippet || "";
     const isUnread = msg.labelIds?.includes("UNREAD");
+    const ccBadge = isCc ? '<span class="gmail-cc-badge">참조</span>' : "";
     return `
     <div class="gmail-item${isUnread ? " gmail-unread" : ""}" onclick="showEmailDetail('${msg.id}')">
-      <div class="gmail-from">${isUnread ? '<span class="gmail-unread-dot"></span>' : ""}${isSent ? "받는 사람: " : ""}${senderOrRecipient}</div>
+      <div class="gmail-from">${isUnread ? '<span class="gmail-unread-dot"></span>' : ""}${ccBadge}${isSent ? "받는 사람: " : ""}${senderOrRecipient}</div>
       <div class="gmail-subject">${subject}</div>
       <div class="gmail-snippet">${snippet}</div>
       <div class="gmail-date">${dateStr}</div>

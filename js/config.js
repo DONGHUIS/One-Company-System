@@ -1,5 +1,5 @@
 // ── 서버 주소 ──
-const SERVER_URL = "http://localhost:4000";
+const SERVER_URL = window.location.hostname === "localhost" ? "http://localhost:4000" : window.location.origin;
 
 // ── 현재 사용자 상태 ──
 let currentUserName = "익명";

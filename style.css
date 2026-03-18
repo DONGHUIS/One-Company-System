@@ -78,6 +78,20 @@ header {
   gap: 8px;
   align-items: center;
 }
+.header-chat-btn {
+  background: rgba(124, 58, 237, 0.1);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  color: var(--primary);
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 0.78rem;
+  font-family: "Gowun Dodum", sans-serif;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+.header-chat-btn:hover {
+  background: rgba(124, 58, 237, 0.18);
+}
 .header-logout-btn,
 .header-change-pw-btn {
   background: rgba(0, 0, 0, 0.04);

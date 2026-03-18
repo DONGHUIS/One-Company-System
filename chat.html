@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>팀 채팅</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: 'Gowun Dodum', sans-serif; background: #f1f5f9; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+
+      /* 헤더 */
+      .top-bar {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff; padding: 12px 20px;
+        display: flex; align-items: center; gap: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15); flex-shrink: 0;
+      }
+      .top-bar a { color: #fff; text-decoration: none; font-size: 1.2rem; }
+      .top-bar h1 { font-size: 1rem; flex: 1; }
+      .btn-new-group {
+        background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+        color: #fff; padding: 6px 14px; border-radius: 16px; font-size: 0.78rem;
+        cursor: pointer; font-family: inherit;
+      }
+      .btn-new-group:hover { background: rgba(255,255,255,0.3); }
+
+      /* 레이아웃 */
+      .chat-body { display: flex; flex: 1; overflow: hidden; }
+
+      /* 룸 목록 */
+      .room-list { width: 260px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; flex-shrink: 0; }
+      .room-search { padding: 10px; border-bottom: 1px solid #f1f5f9; }
+      .room-search input {
+        width: 100%; padding: 7px 12px; border: 1px solid #e2e8f0; border-radius: 16px;
+        font-size: 0.82rem; font-family: inherit; outline: none; background: #f8fafc;
+      }
+      .room-section-title { padding: 8px 14px; font-size: 0.72rem; color: #94a3b8; }
+      .rooms { flex: 1; overflow-y: auto; }
+      .room-item {
+        padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f8fafc;
+        display: flex; align-items: center; gap: 10px; transition: background 0.15s;
+      }
+      .room-item:hover { background: #f8fafc; }
+      .room-item.active { background: #ede9fe; }
+      .room-avatar {
+        width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.9rem; font-weight: 700; color: #fff;
+      }
+      .room-avatar.direct { background: linear-gradient(135deg, #667eea, #764ba2); }
+      .room-avatar.group { background: linear-gradient(135deg, #f093fb, #f5576c); }
+      .room-info { flex: 1; min-width: 0; }
+      .room-name { font-size: 0.88rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .room-last { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+      .room-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+      .room-time { font-size: 0.68rem; color: #94a3b8; }
+      .unread-badge { background: #7c3aed; color: #fff; font-size: 0.68rem; padding: 1px 6px; border-radius: 10px; }
+
+      /* 채팅 창 */
+      .chat-window { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f8fafc; }
+      .placeholder {
+        flex: 1; display: flex; flex-direction: column; align-items: center;
+        justify-content: center; color: #94a3b8; gap: 8px;
+      }
+      .placeholder .icon { font-size: 3rem; }
+
+      .chat-top {
+        padding: 12px 18px; background: #fff; border-bottom: 1px solid #e2e8f0;
+        display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+      }
+      .chat-top .room-avatar { width: 32px; height: 32px; font-size: 0.8rem; }
+      .chat-top-info { flex: 1; }
+      .chat-top-name { font-size: 0.95rem; color: #1e293b; }
+      .chat-top-sub { font-size: 0.72rem; color: #94a3b8; }
+
+      .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+
+      .date-sep { text-align: center; font-size: 0.7rem; color: #94a3b8; margin: 6px 0; display: flex; align-items: center; gap: 8px; }
+      .date-sep::before, .date-sep::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
+
+      .msg-row { display: flex; align-items: flex-end; gap: 8px; }
+      .msg-row.mine { flex-direction: row-reverse; }
+      .msg-sender { font-size: 0.7rem; color: #94a3b8; margin-bottom: 2px; }
+      .msg-col { display: flex; flex-direction: column; max-width: 65%; }
+      .msg-row.mine .msg-col { align-items: flex-end; }
+
+      .msg-bubble {
+        padding: 9px 13px; border-radius: 18px; font-size: 0.87rem; line-height: 1.5; word-break: break-word;
+      }
+      .msg-row.mine .msg-bubble { background: #7c3aed; color: #fff; border-bottom-right-radius: 4px; }
+      .msg-row.other .msg-bubble { background: #fff; color: #1e293b; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+
+      /* 파일 첨부 버블 */
+      .file-bubble {
+        display: flex; align-items: center; gap: 8px;
+        padding: 8px 12px; border-radius: 12px; text-decoration: none;
+        font-size: 0.82rem; max-width: 220px;
+      }
+      .msg-row.mine .file-bubble { background: rgba(255,255,255,0.2); color: #fff; }
+      .msg-row.other .file-bubble { background: #f1f5f9; color: #334155; }
+      .file-bubble .file-icon { font-size: 1.2rem; flex-shrink: 0; }
+      .file-bubble .file-info { min-width: 0; }
+      .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-size: 0.8rem; }
+      .file-size-hint { font-size: 0.68rem; opacity: 0.7; }
+
+      /* 이미지 */
+      .img-bubble { border-radius: 12px; max-width: 200px; max-height: 200px; object-fit: cover; cursor: pointer; display: block; }
+
+      .msg-foot { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+      .msg-time { font-size: 0.67rem; color: #94a3b8; }
+      .msg-read { font-size: 0.67rem; color: #a78bfa; }
+
+      /* 입력 */
+      .chat-input-area {
+        padding: 10px 14px; background: #fff; border-top: 1px solid #e2e8f0;
+        display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0;
+      }
+      .attach-btn {
+        width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e2e8f0;
+        background: #f8fafc; cursor: pointer; font-size: 1rem;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      }
+      .attach-btn:hover { background: #ede9fe; }
+      .chat-input {
+        flex: 1; border: 1px solid #e2e8f0; border-radius: 20px;
+        padding: 9px 14px; font-family: inherit; font-size: 0.87rem;
+        resize: none; outline: none; max-height: 100px; line-height: 1.4; background: #f8fafc;
+      }
+      .chat-input:focus { border-color: #7c3aed; background: #fff; }
+      .send-btn {
+        width: 36px; height: 36px; border-radius: 50%; border: none;
+        background: #7c3aed; color: #fff; font-size: 0.95rem; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        transition: background 0.15s;
+      }
+      .send-btn:hover { background: #6d28d9; }
+
+      /* 파일 미리보기 */
+      .file-preview {
+        padding: 6px 14px; background: #ede9fe; border-top: 1px solid #ddd6fe;
+        display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #5b21b6;
+      }
+      .file-preview .remove { cursor: pointer; color: #7c3aed; margin-left: auto; }
+
+      /* 그룹 생성 모달 */
+      .modal-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(0,0,0,0.4); z-index: 100;
+        align-items: center; justify-content: center;
+      }
+      .modal-overlay.open { display: flex; }
+      .modal {
+        background: #fff; border-radius: 16px; padding: 28px;
+        width: 360px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      }
+      .modal h2 { font-size: 1rem; margin-bottom: 16px; color: #1e293b; }
+      .modal input[type="text"] {
+        width: 100%; padding: 9px 13px; border: 1px solid #e2e8f0; border-radius: 8px;
+        font-family: inherit; font-size: 0.88rem; outline: none; margin-bottom: 12px;
+      }
+      .modal input:focus { border-color: #7c3aed; }
+      .member-check-list { max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 14px; }
+      .member-check-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+      .member-check-item:last-child { border-bottom: none; }
+      .member-check-item input { accent-color: #7c3aed; }
+      .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+      .btn-cancel { padding: 8px 18px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.85rem; }
+      .btn-create { padding: 8px 18px; background: #7c3aed; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.85rem; }
+
+      @media (max-width: 580px) {
+        .room-list { width: 56px; }
+        .room-info, .room-meta, .room-section-title, .room-search { display: none; }
+        .room-item { justify-content: center; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-bar">
+      <a href="/">&#8592;</a>
+      <h1>💬 팀 채팅</h1>
+      <button class="btn-new-group" onclick="openGroupModal()">+ 그룹</button>
+    </div>
+
+    <div class="chat-body">
+      <!-- 룸 목록 -->
+      <div class="room-list">
+        <div class="room-search"><input type="text" placeholder="검색..." oninput="filterRooms(this.value)" /></div>
+        <div class="rooms" id="roomList"></div>
+      </div>
+
+      <!-- 채팅창 -->
+      <div class="chat-window" id="chatWindow">
+        <div class="placeholder"><span class="icon">💬</span><span>채팅방을 선택하세요</span></div>
+      </div>
+    </div>
+
+    <!-- 그룹 생성 모달 -->
+    <div class="modal-overlay" id="groupModal">
+      <div class="modal">
+        <h2>그룹 채팅 만들기</h2>
+        <input type="text" id="groupName" placeholder="그룹 이름" />
+        <div class="member-check-list" id="memberCheckList"></div>
+        <div class="modal-btns">
+          <button class="btn-cancel" onclick="closeGroupModal()">취소</button>
+          <button class="btn-create" onclick="createGroup()">만들기</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/config.js"></script>
+    <script>
+      let me = null, socket = null;
+      let allRooms = [], allUsers = [];
+      let currentRoomId = null;
+      let pendingFile = null;
+
+      function fmtTime(s) {
+        const d = new Date(s);
+        return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+      }
+      function fmtDate(s) {
+        const d = new Date(s);
+        return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
+      }
+      function esc(s) {
+        return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+      }
+      function isImage(type) { return type && type.startsWith("image/"); }
+
+      async function init() {
+        me = await checkAuth();
+        if (!me) return;
+
+        socket = io(SERVER_URL, { auth: { userId: me.id }, withCredentials: true });
+        socket.on("new_message", ({ roomId, msg }) => {
+          if (roomId == currentRoomId) {
+            appendMsg(msg);
+            scrollBottom();
+            socket.emit("mark_read", { roomId });
+          }
+          updateRoomLastMsg(roomId, msg);
+        });
+        socket.on("online_users", () => {});
+        socket.on("messages_read", ({ roomId }) => {
+          if (roomId == currentRoomId) {
+            document.querySelectorAll(".msg-read").forEach(el => el.textContent = "읽음");
+          }
+        });
+
+        await loadData();
+      }
+
+      async function loadData() {
+        [allRooms, allUsers] = await Promise.all([
+          apiFetch("/api/chat/rooms").then(r => r.json()),
+          apiFetch("/api/chat/users").then(r => r.json()),
+        ]);
+        renderRooms(allRooms);
+        renderUserBtns();
+      }
+
+      function getRoomDisplayName(room) {
+        if (room.type === "group") return room.name || "그룹";
+        const ids = (room.member_ids || "").split(",");
+        const names = (room.member_names || "").split(",");
+        const idx = ids.findIndex(id => id != me.id);
+        return names[idx] || "알 수 없음";
+      }
+
+      function renderRooms(rooms) {
+        const el = document.getElementById("roomList");
+        el.innerHTML = rooms.length ? rooms.map(r => {
+          const name = getRoomDisplayName(r);
+          const letter = name[0]?.toUpperCase() || "?";
+          const lastMsg = r.last_file ? `📎 ${r.last_file}` : (r.last_msg || "");
+          return `
+          <div class="room-item ${r.id == currentRoomId ? "active" : ""}" onclick="openRoom(${r.id})">
+            <div class="room-avatar ${r.type}">${r.type === "group" ? "👥" : letter}</div>
+            <div class="room-info">
+              <div class="room-name">${esc(name)}</div>
+              <div class="room-last">${esc(lastMsg)}</div>
+            </div>
+            <div class="room-meta">
+              ${r.last_at ? `<span class="room-time">${fmtTime(r.last_at)}</span>` : ""}
+              ${r.unread > 0 ? `<span class="unread-badge">${r.unread}</span>` : ""}
+            </div>
+          </div>`;
+        }).join("") : `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:0.82rem">아직 대화가 없습니다</div>`;
+
+        // 팀원 바로가기
+        el.innerHTML += `<div class="room-section-title">팀원</div>` +
+          allUsers.map(u => `
+          <div class="room-item" onclick="startDirect(${u.id})">
+            <div class="room-avatar direct">${(u.name||u.email)[0].toUpperCase()}</div>
+            <div class="room-info">
+              <div class="room-name">${esc(u.name||u.email)}</div>
+              <div class="room-last">${esc(u.email)}</div>
+            </div>
+          </div>`).join("");
+      }
+
+      function renderUserBtns() {
+        document.getElementById("memberCheckList").innerHTML = allUsers.map(u => `
+          <label class="member-check-item">
+            <input type="checkbox" value="${u.id}" />
+            ${esc(u.name || u.email)}
+            <span style="font-size:0.72rem;color:#94a3b8;margin-left:auto">${esc(u.email)}</span>
+          </label>`).join("");
+      }
+
+      function filterRooms(val) {
+        const q = val.toLowerCase();
+        const filtered = allRooms.filter(r => getRoomDisplayName(r).toLowerCase().includes(q));
+        renderRooms(q ? filtered : allRooms);
+      }
+
+      async function startDirect(userId) {
+        const res = await apiFetch(`/api/chat/rooms/direct/${userId}`, { method: "POST" });
+        const { roomId } = await res.json();
+        await loadData();
+        openRoom(roomId);
+      }
+
+      async function openRoom(roomId) {
+        currentRoomId = roomId;
+        document.querySelectorAll(".room-item").forEach(el => el.classList.remove("active"));
+        const room = allRooms.find(r => r.id == roomId);
+        if (room) { room.unread = 0; renderRooms(allRooms); }
+
+        const win = document.getElementById("chatWindow");
+        const displayName = room ? getRoomDisplayName(room) : "채팅";
+        const isGroup = room?.type === "group";
+        const memberNames = room ? (room.member_names||"").split(",").filter(Boolean) : [];
+        const memberInfo = isGroup ? `👥 ${memberNames.length}명 · ${memberNames.map(n => esc(n)).join(", ")}` : "";
+
+        win.innerHTML = `
+          <div class="chat-top">
+            <div class="room-avatar ${isGroup ? "group" : "direct"}" style="width:32px;height:32px;font-size:0.8rem">${isGroup ? "👥" : displayName[0]?.toUpperCase()}</div>
+            <div class="chat-top-info">
+              <div class="chat-top-name">${esc(displayName)}</div>
+              <div class="chat-top-sub">${isGroup ? memberInfo : ""}</div>
+            </div>
+          </div>
+          <div id="filePreview" style="display:none" class="file-preview">
+            <span id="filePreviewName"></span>
+            <span class="remove" onclick="clearFile()">✕</span>
+          </div>
+          <div class="messages" id="messages"></div>
+          <div class="chat-input-area">
+            <label class="attach-btn" title="파일 첨부">
+              📎<input type="file" id="fileInput" style="display:none" onchange="onFileSelect(this)" />
+            </label>
+            <textarea class="chat-input" id="chatInput" rows="1" placeholder="메시지 입력..." onkeydown="handleKey(event)"></textarea>
+            <button class="send-btn" onclick="sendMsg()">➤</button>
+          </div>`;
+
+        const history = await apiFetch(`/api/chat/rooms/${roomId}/messages`).then(r => r.json());
+        const msgEl = document.getElementById("messages");
+        let lastDate = "";
+        history.forEach(m => {
+          const d = fmtDate(m.created_at);
+          if (d !== lastDate) { lastDate = d; msgEl.innerHTML += `<div class="date-sep">${d}</div>`; }
+          msgEl.innerHTML += buildBubble(m);
+        });
+        scrollBottom();
+        socket.emit("mark_read", { roomId });
+
+        const input = document.getElementById("chatInput");
+        input.addEventListener("input", () => {
+          input.style.height = "auto";
+          input.style.height = Math.min(input.scrollHeight, 100) + "px";
+        });
+
+        renderRooms(allRooms);
+      }
+
+      function buildBubble(m) {
+        const isMine = m.from_id == me.id;
+        let content = "";
+        if (m.file_url) {
+          if (isImage(m.file_type)) {
+            content = `<a href="${SERVER_URL}${m.file_url}" target="_blank"><img class="img-bubble" src="${SERVER_URL}${m.file_url}" alt="${esc(m.file_name)}" /></a>`;
+          } else {
+            content = `<a class="file-bubble" href="${SERVER_URL}${m.file_url}" target="_blank" download="${esc(m.file_name)}">
+              <span class="file-icon">📎</span>
+              <div class="file-info"><div class="file-name">${esc(m.file_name)}</div><div class="file-size-hint">파일 다운로드</div></div>
+            </a>`;
+          }
+        } else {
+          content = `<div class="msg-bubble">${esc(m.content)}</div>`;
+        }
+        return `
+          <div class="msg-row ${isMine ? "mine" : "other"}">
+            <div class="msg-col">
+              ${!isMine ? `<div class="msg-sender">${esc(m.from_name)}</div>` : ""}
+              ${content}
+              <div class="msg-foot">
+                <span class="msg-time">${fmtTime(m.created_at)}</span>
+                ${isMine ? `<span class="msg-read">${m.is_read ? "읽음" : ""}</span>` : ""}
+              </div>
+            </div>
+          </div>`;
+      }
+
+      function appendMsg(m) {
+        const el = document.getElementById("messages");
+        if (!el) return;
+        el.innerHTML += buildBubble(m);
+      }
+
+      function scrollBottom() {
+        const el = document.getElementById("messages");
+        if (el) el.scrollTop = el.scrollHeight;
+      }
+
+      function updateRoomLastMsg(roomId, msg) {
+        const room = allRooms.find(r => r.id == roomId);
+        if (room) {
+          room.last_msg = msg.content;
+          room.last_file = msg.file_name;
+          room.last_at = msg.created_at;
+          if (msg.from_id != me.id && roomId != currentRoomId) room.unread = (room.unread || 0) + 1;
+        }
+        renderRooms(allRooms);
+      }
+
+      function handleKey(e) {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+      }
+
+      function onFileSelect(input) {
+        const file = input.files[0];
+        if (!file) return;
+        pendingFile = file;
+        document.getElementById("filePreview").style.display = "flex";
+        document.getElementById("filePreviewName").textContent = `📎 ${file.name}`;
+      }
+
+      function clearFile() {
+        pendingFile = null;
+        document.getElementById("filePreview").style.display = "none";
+        document.getElementById("fileInput").value = "";
+      }
+
+      async function sendMsg() {
+        if (!currentRoomId) return;
+        const input = document.getElementById("chatInput");
+        const content = input?.value.trim() || "";
+
+        if (pendingFile) {
+          const fd = new FormData();
+          fd.append("file", pendingFile);
+          const res = await fetch(`${SERVER_URL}/api/chat/upload`, { method: "POST", credentials: "include", body: fd });
+          const { url, name, type } = await res.json();
+          socket.emit("send_message", { roomId: currentRoomId, content: content || null, fileUrl: url, fileName: name, fileType: type });
+          clearFile();
+        } else {
+          if (!content) return;
+          socket.emit("send_message", { roomId: currentRoomId, content });
+        }
+
+        if (input) { input.value = ""; input.style.height = "auto"; }
+      }
+
+      // 그룹 모달
+      function openGroupModal() {
+        document.getElementById("groupName").value = "";
+        document.querySelectorAll("#memberCheckList input").forEach(c => c.checked = false);
+        document.getElementById("groupModal").classList.add("open");
+      }
+      function closeGroupModal() { document.getElementById("groupModal").classList.remove("open"); }
+
+      async function createGroup() {
+        const name = document.getElementById("groupName").value.trim();
+        const memberIds = [...document.querySelectorAll("#memberCheckList input:checked")].map(c => Number(c.value));
+        if (!name) return alert("그룹 이름을 입력하세요");
+        if (!memberIds.length) return alert("멤버를 1명 이상 선택하세요");
+        const res = await apiFetch("/api/chat/rooms/group", {
+          method: "POST",
+          body: JSON.stringify({ name, memberIds }),
+        });
+        const { roomId } = await res.json();
+        closeGroupModal();
+        await loadData();
+        openRoom(roomId);
+      }
+
+      document.getElementById("groupModal").addEventListener("click", e => {
+        if (e.target === document.getElementById("groupModal")) closeGroupModal();
+      });
+
+      init();
+    </script>
+  </body>
+</html>

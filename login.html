@@ -360,8 +360,26 @@
         document.getElementById("loginSuccess").style.display = "none";
       }
 
+      function isInAppBrowser() {
+        const ua = navigator.userAgent || "";
+        return /KAKAOTALK|Line\/|Instagram|NAVER|NaverSearch|FB_IAB|FBAN|FBAV|Twitter|Snapchat|DaumDevice|Whale\//.test(ua);
+      }
+
       function gmailLogin() {
-        location.href = `${SERVER_URL}/auth/google`;
+        const googleUrl = `${SERVER_URL}/auth/google`;
+        if (isInAppBrowser()) {
+          // Android: Chrome로 강제 오픈
+          const intentUrl = `intent://${googleUrl.replace(/^https?:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;end`;
+          location.href = intentUrl;
+          // Chrome 미설치 또는 iOS 대비 fallback
+          setTimeout(() => {
+            const msg = document.getElementById("loginError");
+            msg.textContent = "Chrome 브라우저에서 열어주세요. 주소: " + location.href;
+            msg.style.display = "block";
+          }, 1500);
+        } else {
+          location.href = googleUrl;
+        }
       }
 
       async function submitLogin() {

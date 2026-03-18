@@ -283,6 +283,7 @@ function renderMemos() {
         <p class="memo-content">${m.content || ""}</p>
         <div class="memo-buttons">
           <button class="btn-edit" onclick="editMemo(${m.id})">✏️ 수정</button>
+          <button class="btn-share" onclick="shareMemo(${m.id}, this)">🔗 공유</button>
           <button class="btn-del" onclick="deleteMemo(${m.id})">🗑 삭제</button>
         </div>
       </div>`).join("");
@@ -400,3 +401,35 @@ function fetchWeather() {
 }
 
 fetchWeather();
+
+async function shareMemo(id, btn) {
+  try {
+    const res = await apiFetch(`/api/share/${id}`, { method: "POST" });
+    const data = await res.json();
+    if (!res.ok) return Swal.fire({ icon: "error", title: data.error });
+
+    const shareUrl = `${window.location.origin}/shared.html?token=${data.token}`;
+    await navigator.clipboard.writeText(shareUrl).catch(() => {});
+
+    Swal.fire({
+      title: "공유 링크 생성됨",
+      html: `<input id="share-url-input" value="${shareUrl}" readonly
+               style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:0.85rem;">
+             <p style="margin-top:8px;font-size:0.82rem;color:#666;">클립보드에 복사됐습니다</p>`,
+      icon: "success",
+      showCancelButton: true,
+      confirmButtonText: "링크 열기",
+      cancelButtonText: "링크 삭제",
+      showDenyButton: false,
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        window.open(shareUrl, "_blank");
+      } else if (result.isDismissed && result.dismiss === Swal.DismissReason.cancel) {
+        await apiFetch(`/api/share/${id}`, { method: "DELETE" });
+        Swal.fire({ icon: "info", title: "공유 링크가 삭제됐습니다", timer: 1500, showConfirmButton: false });
+      }
+    });
+  } catch (e) {
+    Swal.fire({ icon: "error", title: "오류 발생", text: e.message });
+  }
+}

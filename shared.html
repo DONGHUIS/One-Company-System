@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>공유 메모</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: 'Gowun Dodum', sans-serif;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .card {
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        padding: 40px;
+        max-width: 680px;
+        width: 100%;
+      }
+
+      .badge {
+        display: inline-block;
+        background: #ede9fe;
+        color: #7c3aed;
+        font-size: 0.75rem;
+        padding: 4px 12px;
+        border-radius: 20px;
+        margin-bottom: 16px;
+      }
+
+      .memo-title {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 12px;
+        line-height: 1.4;
+      }
+
+      .memo-meta {
+        display: flex;
+        gap: 12px;
+        font-size: 0.8rem;
+        color: #94a3b8;
+        margin-bottom: 24px;
+      }
+
+      .memo-content {
+        font-size: 1rem;
+        color: #334155;
+        line-height: 1.8;
+        white-space: pre-wrap;
+        word-break: break-word;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 20px;
+      }
+
+      .error-box {
+        text-align: center;
+        color: #64748b;
+      }
+      .error-box .icon { font-size: 3rem; margin-bottom: 12px; }
+      .error-box p { font-size: 1rem; }
+
+      .footer {
+        margin-top: 28px;
+        text-align: center;
+        font-size: 0.78rem;
+        color: #cbd5e1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card" id="card">
+      <div class="error-box">
+        <div class="icon">⏳</div>
+        <p>불러오는 중...</p>
+      </div>
+    </div>
+
+    <script>
+      const SERVER_URL = window.location.origin === "http://localhost:5501"
+        ? "http://localhost:4000"
+        : window.location.origin;
+
+      function fmtDate(str) {
+        if (!str) return "";
+        const d = new Date(str);
+        return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
+      }
+
+      (async () => {
+        const token = new URLSearchParams(location.search).get("token");
+        const card = document.getElementById("card");
+
+        if (!token) {
+          card.innerHTML = `<div class="error-box"><div class="icon">🔗</div><p>잘못된 링크입니다</p></div>`;
+          return;
+        }
+
+        try {
+          const res = await fetch(`${SERVER_URL}/api/share/${token}`);
+          if (!res.ok) {
+            card.innerHTML = `<div class="error-box"><div class="icon">🚫</div><p>메모를 찾을 수 없습니다<br>삭제됐거나 만료된 링크입니다</p></div>`;
+            return;
+          }
+
+          const m = await res.json();
+          document.title = m.title || "공유 메모";
+          card.innerHTML = `
+            <span class="badge"># ${m.tag}</span>
+            <div class="memo-title">${m.title || "제목 없음"}</div>
+            <div class="memo-meta">
+              <span>📅 ${m.edited_at ? fmtDate(m.edited_at) + " (편집됨)" : fmtDate(m.created_at)}</span>
+            </div>
+            <div class="memo-content">${m.content || ""}</div>
+            <div class="footer">MY WORK SPACE · 공유된 메모</div>
+          `;
+        } catch (e) {
+          card.innerHTML = `<div class="error-box"><div class="icon">⚠️</div><p>오류가 발생했습니다</p></div>`;
+        }
+      })();
+    </script>
+  </body>
+</html>

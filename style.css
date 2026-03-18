@@ -528,8 +528,7 @@ select {
 }
 
 .author {
-  color: var(--text-muted);
-  font-size: 0.78rem;
+  display: none;
 }
 
 .memo-content {
@@ -570,6 +569,11 @@ select {
   background: rgba(129, 140, 248, 0.15);
   color: var(--accent2);
   border: 1px solid rgba(129, 140, 248, 0.25) !important;
+}
+.btn-share {
+  background: rgba(52, 211, 153, 0.12);
+  color: #059669;
+  border: 1px solid rgba(52, 211, 153, 0.25) !important;
 }
 .btn-del {
   background: rgba(248, 113, 113, 0.12);

@@ -237,9 +237,11 @@
         socket = io(SERVER_URL, { auth: { userId: me.id }, withCredentials: true });
         socket.on("new_message", ({ roomId, msg }) => {
           if (roomId == currentRoomId) {
-            appendMsg(msg);
-            scrollBottom();
-            socket.emit("mark_read", { roomId });
+            if (msg.from_id != me.id) {
+              appendMsg(msg);
+              scrollBottom();
+              socket.emit("mark_read", { roomId });
+            }
           }
           updateRoomLastMsg(roomId, msg);
         });
@@ -456,12 +458,15 @@
           const res = await fetch(`${SERVER_URL}/api/chat/upload`, { method: "POST", credentials: "include", body: fd });
           const { url, name, type } = await res.json();
           socket.emit("send_message", { roomId: currentRoomId, content: content || null, fileUrl: url, fileName: name, fileType: type });
+          appendMsg({ from_id: me.id, from_name: me.name, content: content||null, file_url: url, file_name: name, file_type: type, created_at: new Date().toISOString(), is_read: 0 });
           clearFile();
         } else {
           if (!content) return;
+          appendMsg({ from_id: me.id, from_name: me.name, content, created_at: new Date().toISOString(), is_read: 0 });
           socket.emit("send_message", { roomId: currentRoomId, content });
         }
 
+        scrollBottom();
         if (input) { input.value = ""; input.style.height = "auto"; }
       }
 

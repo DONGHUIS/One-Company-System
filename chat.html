@@ -624,6 +624,13 @@
       });
 
       init();
+
+      // 활동 시간 측정 heartbeat
+      setInterval(() => {
+        if (!document.hidden) {
+          fetch("/api/report/activity", { method: "POST", credentials: "include" }).catch(() => {});
+        }
+      }, 60000);
     </script>
   </body>
 </html>

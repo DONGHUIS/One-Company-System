@@ -23,6 +23,7 @@
         <div class="header-right-btns">
           <button class="header-change-pw-btn" id="changePwBtn" onclick="openChangePwModal()" style="display:none">개인정보 변경</button>
           <a href="/chat.html" class="header-chat-btn">💬 채팅</a>
+          <a href="/report.html" class="header-chat-btn">📊 Report</a>
           <button class="header-logout-btn" onclick="logout()">로그아웃</button>
         </div>
         <div class="logo">📝</div>
@@ -632,5 +633,13 @@
     <script src="js/maps.js"></script>
     <script src="js/reminder.js"></script>
     <script src="js/main.js"></script>
+    <script>
+      // 활동 시간 측정 heartbeat (탭이 활성화된 동안 1분마다 기록)
+      setInterval(() => {
+        if (!document.hidden) {
+          fetch("/api/report/activity", { method: "POST", credentials: "include" }).catch(() => {});
+        }
+      }, 60000);
+    </script>
   </body>
 </html>

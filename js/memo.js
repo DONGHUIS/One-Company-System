@@ -1,4 +1,23 @@
 // ── 메모 기능 ──
+
+async function exportMemoExcel() {
+  try {
+    const res = await fetch("/api/memos/export/excel", { credentials: "include" });
+    if (!res.ok) {
+      const err = await res.json();
+      return Swal.fire("오류", err.error || "엑셀 생성 실패", "error");
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `메모_${new Date().toISOString().slice(0,10)}.xlsx`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    Swal.fire("오류", "엑셀 다운로드에 실패했습니다.", "error");
+  }
+}
 let memosCache = [];
 let trashCache = [];
 

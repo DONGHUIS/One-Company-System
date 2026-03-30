@@ -206,11 +206,12 @@ function renderTrash() {
   list.innerHTML = trashCache.map((m) => {
     const deletedAt = new Date(m.deleted_at).getTime();
     const remaining = Math.ceil((deletedAt + DAYS * 24 * 60 * 60 * 1000 - now) / (24 * 60 * 60 * 1000));
+    const expireLabel = remaining <= 0 ? "오늘 자동삭제 예정" : `${remaining}일 후 자동삭제`;
     return `
     <div class="memo-card trash-card">
       <div class="memo-header">
         <h3>${m.title || "제목 없음"}</h3>
-        <span class="trash-expire">${remaining}일 후 자동삭제</span>
+        <span class="trash-expire">${expireLabel}</span>
       </div>
       <div class="memo-meta">
         <span class="tag"># ${m.tag}</span>

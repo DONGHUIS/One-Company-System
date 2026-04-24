@@ -1,5 +1,8 @@
 // ── 서버 주소 ──
-const SERVER_URL = window.location.hostname === "localhost" ? "http://localhost:4000" : window.location.origin;
+const SERVER_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:4000"
+    : window.location.origin;
 
 // ── 현재 사용자 상태 ──
 let currentUserName = "익명";
@@ -8,7 +11,9 @@ let gmailToken = true; // 서버 세션으로 관리 (페이지 로드 시 check
 // ── 로그인 확인 ──
 async function checkAuth() {
   try {
-    const res = await fetch(`${SERVER_URL}/auth/me`, { credentials: "include" });
+    const res = await fetch(`${SERVER_URL}/auth/me`, {
+      credentials: "include",
+    });
     if (!res.ok) {
       location.replace("./login.html");
       return false;
@@ -39,7 +44,9 @@ function handleTokenExpired() {
 
 async function fetchUserInfo() {
   try {
-    const res = await fetch(`${SERVER_URL}/auth/me`, { credentials: "include" });
+    const res = await fetch(`${SERVER_URL}/auth/me`, {
+      credentials: "include",
+    });
     if (!res.ok) return;
     const user = await res.json();
     currentUserName = user.name || user.email || "익명";

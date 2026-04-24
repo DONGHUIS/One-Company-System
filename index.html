@@ -22,9 +22,10 @@
       <header>
         <div class="header-right-btns">
           <button class="header-change-pw-btn" id="changePwBtn" onclick="openChangePwModal()" style="display:none">개인정보 변경</button>
-          <a href="/chat.html" class="header-chat-btn">💬 채팅</a>
+          <a href="/chat.html" class="header-chat-btn">💬 Chatting</a>
+          <a href="/board.html" class="header-chat-btn">📋 Board</a>
           <a href="/report.html" class="header-chat-btn">📊 Report</a>
-          <button class="header-logout-btn" onclick="logout()">로그아웃</button>
+          <button class="header-logout-btn" onclick="logout()">Logout</button>
         </div>
         <div class="logo">📝</div>
         <h1>MY WORK SPACE</h1>
@@ -592,36 +593,6 @@
       </div>
     </div>
 
-    <!-- Gemini 채팅 플로팅 버튼 -->
-    <button class="chat-fab" id="chatFab" onclick="toggleChat()" title="AI 채팅">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-    </button>
-
-    <!-- Gemini 채팅 팝업 -->
-    <div class="chat-popup" id="chatPopup" style="display:none">
-      <div class="chat-popup-header">
-        <span>✨ Gemini AI</span>
-        <div style="display:flex;gap:6px;align-items:center">
-          <button class="chat-history-btn" onclick="toggleChatHistory()" title="이전 대화">📋</button>
-          <button class="chat-popup-close" onclick="toggleChat()">×</button>
-        </div>
-      </div>
-      <!-- 이전 대화 목록 패널 -->
-      <div id="chatHistoryPanel" style="display:none">
-        <div class="chat-history-header">
-          <span>이전 대화</span>
-          <button onclick="toggleChatHistory()">✕</button>
-        </div>
-        <div id="chatHistoryList" class="chat-history-list"></div>
-      </div>
-      <div class="chat-messages" id="chatMessages"></div>
-      <div class="chat-input-row">
-        <input type="text" id="chatInput" placeholder="메시지를 입력하세요..." onkeydown="if(event.key==='Enter' && !event.shiftKey) { event.preventDefault(); sendChat(); }" />
-        <button class="chat-send-btn" onclick="sendChat()">전송</button>
-      </div>
-    </div>
 
     <script src="js/config.js"></script>
     <script src="js/memo.js"></script>

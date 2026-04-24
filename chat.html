@@ -5,225 +5,1408 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>팀 채팅</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap"
+      rel="stylesheet"
+    />
     <style>
-      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-      body { font-family: 'Gowun Dodum', sans-serif; background: #f1f5f9; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Gowun Dodum", sans-serif;
+        background: #f1f5f9;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
 
-      /* 헤더 */
       .top-bar {
         background: linear-gradient(135deg, #667eea, #764ba2);
-        color: #fff; padding: 12px 20px;
-        display: flex; align-items: center; gap: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15); flex-shrink: 0;
+        color: #fff;
+        padding: 12px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        flex-shrink: 0;
       }
-      .top-bar a { color: #fff; text-decoration: none; font-size: 1.2rem; }
-      .top-bar h1 { font-size: 1rem; flex: 1; }
+      .top-bar a {
+        color: #fff;
+        text-decoration: none;
+        font-size: 1.2rem;
+      }
+      .top-bar h1 {
+        font-size: 1rem;
+        flex: 1;
+      }
       .btn-new-group {
-        background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
-        color: #fff; padding: 6px 14px; border-radius: 16px; font-size: 0.78rem;
-        cursor: pointer; font-family: inherit;
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: #fff;
+        padding: 6px 14px;
+        border-radius: 16px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        font-family: inherit;
       }
-      .btn-new-group:hover { background: rgba(255,255,255,0.3); }
+      .btn-new-group:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
 
-      /* 레이아웃 */
-      .chat-body { display: flex; flex: 1; overflow: hidden; }
+      .chat-body {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
 
       /* 룸 목록 */
-      .room-list { width: 260px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; flex-shrink: 0; }
-      .room-search { padding: 10px; border-bottom: 1px solid #f1f5f9; }
+      .room-list {
+        width: 260px;
+        background: #fff;
+        border-right: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+      }
+      .room-tabs {
+        display: flex;
+        border-bottom: 1px solid #e2e8f0;
+        flex-shrink: 0;
+      }
+      .room-tab {
+        flex: 1;
+        padding: 10px 0;
+        border: none;
+        background: none;
+        font-family: inherit;
+        font-size: 0.82rem;
+        cursor: pointer;
+        color: #94a3b8;
+        border-bottom: 2px solid transparent;
+        transition:
+          color 0.15s,
+          border-color 0.15s;
+      }
+      .room-tab.active {
+        color: #7c3aed;
+        border-bottom-color: #7c3aed;
+        font-weight: 700;
+      }
+      .room-tab:hover:not(.active) {
+        color: #475569;
+      }
+      .room-search {
+        padding: 10px;
+        border-bottom: 1px solid #f1f5f9;
+      }
       .room-search input {
-        width: 100%; padding: 7px 12px; border: 1px solid #e2e8f0; border-radius: 16px;
-        font-size: 0.82rem; font-family: inherit; outline: none; background: #f8fafc;
+        width: 100%;
+        padding: 7px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        font-size: 0.82rem;
+        font-family: inherit;
+        outline: none;
+        background: #f8fafc;
       }
-      .room-section-title { padding: 8px 14px; font-size: 0.72rem; color: #94a3b8; }
-      .rooms { flex: 1; overflow-y: auto; }
+      .room-section-title {
+        padding: 8px 14px;
+        font-size: 0.72rem;
+        color: #94a3b8;
+      }
+      .rooms {
+        flex: 1;
+        overflow-y: auto;
+      }
+      .users-panel {
+        flex: 1;
+        overflow-y: auto;
+        display: none;
+      }
       .room-item {
-        padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f8fafc;
-        display: flex; align-items: center; gap: 10px; transition: background 0.15s;
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f8fafc;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: background 0.15s;
+        position: relative;
       }
-      .room-item:hover { background: #f8fafc; }
-      .room-item.active { background: #ede9fe; }
+      .room-item:hover {
+        background: #f8fafc;
+      }
+      .room-item.active {
+        background: #ede9fe;
+      }
       .room-avatar {
-        width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 0.9rem; font-weight: 700; color: #fff;
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #fff;
       }
-      .room-avatar.direct { background: linear-gradient(135deg, #667eea, #764ba2); }
-      .room-avatar.group { background: linear-gradient(135deg, #f093fb, #f5576c); }
-      .room-info { flex: 1; min-width: 0; }
-      .room-name { font-size: 0.88rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .room-last { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
-      .room-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
-      .room-time { font-size: 0.68rem; color: #94a3b8; }
-      .unread-badge { background: #7c3aed; color: #fff; font-size: 0.68rem; padding: 1px 6px; border-radius: 10px; }
+      .room-avatar.direct {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+      }
+      .room-avatar.group {
+        background: linear-gradient(135deg, #f093fb, #f5576c);
+      }
+      .room-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .room-name {
+        font-size: 0.88rem;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .room-last {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 2px;
+      }
+      .room-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 4px;
+        flex-shrink: 0;
+      }
+      .room-time {
+        font-size: 0.68rem;
+        color: #94a3b8;
+      }
+      .unread-badge {
+        background: #7c3aed;
+        color: #fff;
+        font-size: 0.68rem;
+        padding: 1px 6px;
+        border-radius: 10px;
+      }
+      .pin-btn {
+        display: none;
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 0.8rem;
+        padding: 2px 4px;
+        line-height: 1;
+      }
+      .room-item:hover .pin-btn {
+        display: block;
+      }
+      .pin-btn.pinned {
+        display: block;
+      }
 
       /* 채팅 창 */
-      .chat-window { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f8fafc; }
-      .placeholder {
-        flex: 1; display: flex; flex-direction: column; align-items: center;
-        justify-content: center; color: #94a3b8; gap: 8px;
+      .chat-window {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: #f8fafc;
       }
-      .placeholder .icon { font-size: 3rem; }
+      .placeholder {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+        gap: 8px;
+      }
+      .placeholder .icon {
+        font-size: 3rem;
+      }
 
       .chat-top {
-        padding: 12px 18px; background: #fff; border-bottom: 1px solid #e2e8f0;
-        display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+        padding: 12px 18px;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
       }
-      .chat-top .room-avatar { width: 32px; height: 32px; font-size: 0.8rem; }
-      .chat-top-info { flex: 1; }
-      .chat-top-name { font-size: 0.95rem; color: #1e293b; }
-      .chat-top-sub { font-size: 0.72rem; color: #94a3b8; }
+      .chat-top .room-avatar {
+        width: 32px;
+        height: 32px;
+        font-size: 0.8rem;
+      }
+      .chat-top-info {
+        flex: 1;
+      }
+      .chat-top-name {
+        font-size: 0.95rem;
+        color: #1e293b;
+      }
+      .chat-top-sub {
+        font-size: 0.72rem;
+        color: #94a3b8;
+      }
+      .chat-top-actions {
+        display: flex;
+        gap: 6px;
+      }
+      .icon-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        cursor: pointer;
+        font-size: 0.88rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .icon-btn:hover {
+        background: #ede9fe;
+      }
 
-      .messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+      /* 검색 패널 */
+      .search-panel {
+        padding: 8px 14px;
+        background: #fff;
+        border-bottom: 1px solid #e2e8f0;
+        display: none;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .search-panel.open {
+        display: flex;
+      }
+      .search-panel input {
+        width: 100%;
+        padding: 7px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        font-size: 0.85rem;
+        font-family: inherit;
+        outline: none;
+      }
+      .search-panel input:focus {
+        border-color: #7c3aed;
+      }
+      .search-results {
+        max-height: 180px;
+        overflow-y: auto;
+      }
+      .search-result-item {
+        padding: 8px 10px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+        font-size: 0.82rem;
+        border-radius: 6px;
+      }
+      .search-result-item:hover {
+        background: #f8fafc;
+      }
+      .search-result-meta {
+        color: #7c3aed;
+        font-size: 0.72rem;
+        margin-bottom: 2px;
+      }
+      .search-result-text {
+        color: #334155;
+      }
+      .search-highlight {
+        background: #fef08a;
+        border-radius: 2px;
+        padding: 0 1px;
+      }
 
-      .date-sep { text-align: center; font-size: 0.7rem; color: #94a3b8; margin: 6px 0; display: flex; align-items: center; gap: 8px; }
-      .date-sep::before, .date-sep::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; }
+      .messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
 
-      .msg-row { display: flex; align-items: flex-end; gap: 8px; }
-      .msg-row.mine { flex-direction: row-reverse; }
-      .msg-sender { font-size: 0.7rem; color: #94a3b8; margin-bottom: 2px; }
-      .msg-col { display: flex; flex-direction: column; max-width: 65%; }
-      .msg-row.mine .msg-col { align-items: flex-end; }
+      .date-sep {
+        text-align: center;
+        font-size: 0.7rem;
+        color: #94a3b8;
+        margin: 6px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .date-sep::before,
+      .date-sep::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: #e2e8f0;
+      }
+
+      .msg-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+      }
+      .msg-row.mine {
+        flex-direction: row-reverse;
+      }
+      .msg-sender {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        margin-bottom: 2px;
+      }
+      .msg-col {
+        display: flex;
+        flex-direction: column;
+        max-width: 65%;
+      }
+      .msg-row.mine .msg-col {
+        align-items: flex-end;
+      }
+
+      /* 버블 래퍼 (이모지 트리거 포함) */
+      .msg-bubble-wrap {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .msg-row.mine .msg-bubble-wrap {
+        flex-direction: row-reverse;
+      }
 
       .msg-bubble {
-        padding: 9px 13px; border-radius: 18px; font-size: 0.87rem; line-height: 1.5; word-break: break-word;
+        padding: 9px 13px;
+        border-radius: 18px;
+        font-size: 0.87rem;
+        line-height: 1.5;
+        word-break: break-word;
+        white-space: pre-wrap;
       }
-      .msg-row.mine .msg-bubble { background: #7c3aed; color: #fff; border-bottom-right-radius: 4px; }
-      .msg-row.other .msg-bubble { background: #fff; color: #1e293b; border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+      .msg-row.mine .msg-bubble {
+        background: #7c3aed;
+        color: #fff;
+        border-bottom-right-radius: 4px;
+      }
+      .msg-row.other .msg-bubble {
+        background: #fff;
+        color: #1e293b;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
 
-      /* 파일 첨부 버블 */
+      .emoji-trigger {
+        display: none;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 2px 6px;
+        font-size: 0.72rem;
+        cursor: pointer;
+        flex-shrink: 0;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+        line-height: 1.4;
+      }
+      .msg-bubble-wrap:hover .emoji-trigger {
+        display: block;
+      }
+
+      /* 이모지 피커 */
+      .emoji-picker {
+        position: fixed;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 8px 10px;
+        display: none;
+        gap: 4px;
+        z-index: 1000;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+      .emoji-picker.open {
+        display: flex;
+      }
+      .emoji-option {
+        font-size: 1.25rem;
+        cursor: pointer;
+        padding: 3px 5px;
+        border-radius: 6px;
+        transition: background 0.1s;
+      }
+      .emoji-option:hover {
+        background: #f1f5f9;
+      }
+
+      /* 반응 바 */
+      .reaction-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 4px;
+        min-height: 0;
+      }
+      .reaction-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 0.78rem;
+        cursor: pointer;
+        transition: background 0.1s;
+        user-select: none;
+      }
+      .reaction-pill:hover {
+        background: #ede9fe;
+        border-color: #c4b5fd;
+      }
+      .reaction-pill.mine {
+        background: #ede9fe;
+        border-color: #a78bfa;
+      }
+      .r-cnt {
+        font-size: 0.72rem;
+        color: #64748b;
+      }
+
+      /* 파일 버블 */
       .file-bubble {
-        display: flex; align-items: center; gap: 8px;
-        padding: 8px 12px; border-radius: 12px; text-decoration: none;
-        font-size: 0.82rem; max-width: 220px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-size: 0.82rem;
+        max-width: 220px;
       }
-      .msg-row.mine .file-bubble { background: rgba(255,255,255,0.2); color: #fff; }
-      .msg-row.other .file-bubble { background: #f1f5f9; color: #334155; }
-      .file-bubble .file-icon { font-size: 1.2rem; flex-shrink: 0; }
-      .file-bubble .file-info { min-width: 0; }
-      .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; font-size: 0.8rem; }
-      .file-size-hint { font-size: 0.68rem; opacity: 0.7; }
+      .msg-row.mine .file-bubble {
+        background: #7c3aed;
+        color: #fff;
+      }
+      .msg-row.other .file-bubble {
+        background: #f1f5f9;
+        color: #334155;
+      }
+      .file-bubble .file-icon {
+        font-size: 1.2rem;
+        flex-shrink: 0;
+      }
+      .file-bubble .file-info {
+        min-width: 0;
+      }
+      .file-name {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 140px;
+        font-size: 0.8rem;
+      }
+      .file-size-hint {
+        font-size: 0.68rem;
+        opacity: 0.7;
+      }
+      .img-bubble {
+        border-radius: 12px;
+        max-width: 200px;
+        max-height: 200px;
+        object-fit: cover;
+        cursor: pointer;
+        display: block;
+      }
 
-      /* 이미지 */
-      .img-bubble { border-radius: 12px; max-width: 200px; max-height: 200px; object-fit: cover; cursor: pointer; display: block; }
-
-      .msg-foot { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
-      .msg-time { font-size: 0.67rem; color: #94a3b8; }
-      .msg-read { font-size: 0.67rem; color: #a78bfa; }
+      .msg-foot {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 2px;
+      }
+      .msg-time {
+        font-size: 0.67rem;
+        color: #94a3b8;
+      }
+      .msg-read {
+        font-size: 0.67rem;
+        color: #a78bfa;
+      }
 
       /* 입력 */
       .chat-input-area {
-        padding: 10px 14px; background: #fff; border-top: 1px solid #e2e8f0;
-        display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0;
+        padding: 10px 14px;
+        background: #fff;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        gap: 8px;
+        align-items: flex-end;
+        flex-shrink: 0;
       }
       .attach-btn {
-        width: 36px; height: 36px; border-radius: 50%; border: 1px solid #e2e8f0;
-        background: #f8fafc; cursor: pointer; font-size: 1rem;
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        cursor: pointer;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
       }
-      .attach-btn:hover { background: #ede9fe; }
+      .attach-btn:hover {
+        background: #ede9fe;
+      }
       .chat-input {
-        flex: 1; border: 1px solid #e2e8f0; border-radius: 20px;
-        padding: 9px 14px; font-family: inherit; font-size: 0.87rem;
-        resize: none; outline: none; max-height: 100px; line-height: 1.4; background: #f8fafc;
+        flex: 1;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 9px 14px;
+        font-family: inherit;
+        font-size: 0.87rem;
+        resize: none;
+        outline: none;
+        max-height: 100px;
+        line-height: 1.4;
+        background: #f8fafc;
       }
-      .chat-input:focus { border-color: #7c3aed; background: #fff; }
+      .chat-input:focus {
+        border-color: #7c3aed;
+        background: #fff;
+      }
       .send-btn {
-        width: 36px; height: 36px; border-radius: 50%; border: none;
-        background: #7c3aed; color: #fff; font-size: 0.95rem; cursor: pointer;
-        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: #7c3aed;
+        color: #fff;
+        font-size: 0.95rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
         transition: background 0.15s;
       }
-      .send-btn:hover { background: #6d28d9; }
+      .send-btn:hover {
+        background: #6d28d9;
+      }
 
-      /* 파일 미리보기 */
       .file-preview {
-        padding: 6px 14px; background: #ede9fe; border-top: 1px solid #ddd6fe;
-        display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: #5b21b6;
+        padding: 6px 14px;
+        background: #ede9fe;
+        border-top: 1px solid #ddd6fe;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.8rem;
+        color: #5b21b6;
       }
-      .file-preview .remove { cursor: pointer; color: #7c3aed; margin-left: auto; }
+      .file-preview .remove {
+        cursor: pointer;
+        color: #7c3aed;
+        margin-left: auto;
+      }
 
-      /* 그룹 생성 모달 */
+      /* 모달 공통 */
       .modal-overlay {
-        display: none; position: fixed; inset: 0;
-        background: rgba(0,0,0,0.4); z-index: 100;
-        align-items: center; justify-content: center;
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
       }
-      .modal-overlay.open { display: flex; }
+      .modal-overlay.open {
+        display: flex;
+      }
       .modal {
-        background: #fff; border-radius: 16px; padding: 28px;
-        width: 360px; max-width: 90vw; box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        background: #fff;
+        border-radius: 16px;
+        padding: 28px;
+        width: 380px;
+        max-width: 92vw;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+        max-height: 90vh;
+        overflow-y: auto;
       }
-      .modal h2 { font-size: 1rem; margin-bottom: 16px; color: #1e293b; }
+      .modal h2 {
+        font-size: 1rem;
+        margin-bottom: 16px;
+        color: #1e293b;
+      }
       .modal input[type="text"] {
-        width: 100%; padding: 9px 13px; border: 1px solid #e2e8f0; border-radius: 8px;
-        font-family: inherit; font-size: 0.88rem; outline: none; margin-bottom: 12px;
+        width: 100%;
+        padding: 9px 13px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.88rem;
+        outline: none;
+        margin-bottom: 12px;
       }
-      .modal input:focus { border-color: #7c3aed; }
-      .member-check-list { max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 14px; }
-      .member-check-item { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
-      .member-check-item:last-child { border-bottom: none; }
-      .member-check-item input { accent-color: #7c3aed; }
-      .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
-      .btn-cancel { padding: 8px 18px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.85rem; }
-      .btn-create { padding: 8px 18px; background: #7c3aed; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 0.85rem; }
+      .modal input:focus {
+        border-color: #7c3aed;
+      }
+      .member-check-list {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        margin-bottom: 14px;
+      }
+      .member-check-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        cursor: pointer;
+      }
+      .member-check-item:last-child {
+        border-bottom: none;
+      }
+      .member-check-item input {
+        accent-color: #7c3aed;
+      }
+      .modal-btns {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+        margin-top: 4px;
+      }
+      .btn-cancel {
+        padding: 8px 18px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.85rem;
+      }
+      .btn-create {
+        padding: 8px 18px;
+        background: #7c3aed;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.85rem;
+      }
+
+      /* 설정 모달 */
+      .settings-section {
+        margin-bottom: 16px;
+      }
+      .settings-section-label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-bottom: 8px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .member-scroll {
+        max-height: 180px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+      }
+      .member-list-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-bottom: 1px solid #f8fafc;
+      }
+      .member-list-item:last-child {
+        border-bottom: none;
+      }
+      .m-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+      }
+      .m-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .m-name {
+        font-size: 0.85rem;
+        color: #1e293b;
+      }
+      .m-email {
+        font-size: 0.7rem;
+        color: #94a3b8;
+      }
+      .owner-badge {
+        font-size: 0.65rem;
+        color: #7c3aed;
+        background: #ede9fe;
+        padding: 1px 5px;
+        border-radius: 4px;
+        margin-left: 4px;
+      }
+      .kick-btn {
+        padding: 3px 10px;
+        font-size: 0.72rem;
+        border: 1px solid #fca5a5;
+        background: #fff;
+        color: #ef4444;
+        border-radius: 6px;
+        cursor: pointer;
+        font-family: inherit;
+        flex-shrink: 0;
+      }
+      .kick-btn:hover {
+        background: #fee2e2;
+      }
+      .add-member-row {
+        display: flex;
+        gap: 8px;
+      }
+      .add-member-row select {
+        flex: 1;
+        padding: 7px 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.85rem;
+        outline: none;
+      }
+      .btn-add {
+        padding: 7px 14px;
+        background: #7c3aed;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.82rem;
+        flex-shrink: 0;
+      }
+      .btn-leave {
+        width: 100%;
+        padding: 9px;
+        background: #fff;
+        border: 1px solid #fca5a5;
+        color: #ef4444;
+        border-radius: 8px;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 0.88rem;
+      }
+      .btn-leave:hover {
+        background: #fee2e2;
+      }
+
+      /* AI 채팅 패널 */
+      .ai-chat-panel {
+        flex: 1;
+        display: none;
+        flex-direction: column;
+        overflow: hidden;
+        background: #f8fafc;
+      }
+      .ai-chat-panel.active {
+        display: flex;
+      }
+      .ai-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 14px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .chat-msg {
+        max-width: 80%;
+        padding: 9px 13px;
+        border-radius: 12px;
+        font-size: 0.86rem;
+        line-height: 1.55;
+        word-break: break-word;
+        white-space: pre-wrap;
+      }
+      .chat-msg-user {
+        align-self: flex-end;
+        background: #7c3aed;
+        color: #fff;
+        border-bottom-right-radius: 4px;
+      }
+      .chat-msg-model {
+        align-self: flex-start;
+        background: #fff;
+        color: #1e293b;
+        border-bottom-left-radius: 4px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+      }
+      .chat-msg-system {
+        align-self: center;
+        background: transparent;
+        color: #94a3b8;
+        font-size: 0.8rem;
+        white-space: normal;
+      }
+      .chat-thinking {
+        opacity: 0.6;
+        font-style: italic;
+      }
+      .ai-history-panel {
+        display: none;
+        flex-direction: column;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fafafa;
+        max-height: 240px;
+        flex-shrink: 0;
+      }
+      .ai-history-panel.open {
+        display: flex;
+      }
+      .ai-history-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #444;
+        border-bottom: 1px solid #e8e8e8;
+        flex-shrink: 0;
+      }
+      .ai-history-header button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 14px;
+        color: #888;
+      }
+      .ai-history-list {
+        overflow-y: auto;
+        flex: 1;
+      }
+      .ai-history-item {
+        padding: 9px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f0f0f0;
+        transition: background 0.15s;
+      }
+      .ai-history-item:hover {
+        background: #ede9fe;
+      }
+      .ai-history-item-title {
+        font-size: 0.82rem;
+        color: #333;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ai-history-item-date {
+        font-size: 0.7rem;
+        color: #999;
+        margin-top: 2px;
+      }
+      .ai-history-empty {
+        padding: 16px;
+        text-align: center;
+        font-size: 0.8rem;
+        color: #aaa;
+      }
+      .ai-session-label {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        text-align: center;
+        padding: 6px 0 10px;
+      }
+      .ai-input-row {
+        display: flex;
+        gap: 6px;
+        padding: 10px 12px;
+        border-top: 1px solid #e2e8f0;
+        background: #fff;
+        flex-shrink: 0;
+      }
+      .ai-input-row input {
+        flex: 1;
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.86rem;
+        background: #f8fafc;
+        outline: none;
+      }
+      .ai-input-row input:focus {
+        border-color: #7c3aed;
+        background: #fff;
+      }
+      .ai-send-btn {
+        padding: 8px 14px;
+        background: #7c3aed;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.86rem;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .ai-send-btn:hover {
+        background: #6d28d9;
+      }
+      .ai-kb-panel {
+        display: none;
+        flex: 1;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .ai-kb-panel.open {
+        display: flex;
+      }
+      .ai-kb-header {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
+        flex-shrink: 0;
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+      .ai-kb-header-title {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: #1e293b;
+      }
+      .ai-kb-header-sub {
+        font-size: 0.72rem;
+        color: #94a3b8;
+        margin-top: 2px;
+      }
+      .ai-kb-textarea {
+        flex: 1;
+        padding: 14px 16px;
+        font-family: inherit;
+        font-size: 0.84rem;
+        border: none;
+        outline: none;
+        resize: none;
+        color: #1e293b;
+        line-height: 1.7;
+        background: #f8fafc;
+      }
+      .ai-kb-footer {
+        padding: 10px 14px;
+        border-top: 1px solid #e2e8f0;
+        background: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0;
+      }
+      .ai-kb-count {
+        font-size: 0.72rem;
+        color: #94a3b8;
+      }
+      .ai-kb-save {
+        padding: 7px 16px;
+        background: #7c3aed;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.84rem;
+        cursor: pointer;
+      }
+      .ai-kb-save:hover {
+        background: #6d28d9;
+      }
+      .ai-kb-clear {
+        padding: 7px 12px;
+        background: none;
+        border: 1px solid #e2e8f0;
+        color: #94a3b8;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.84rem;
+        cursor: pointer;
+      }
+      .ai-kb-clear:hover {
+        border-color: #fca5a5;
+        color: #ef4444;
+      }
+      .icon-btn.kb-active {
+        background: #ede9fe;
+        color: #7c3aed;
+        border-color: #c4b5fd;
+      }
+      .kb-btn {
+        padding: 6px 12px;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        cursor: pointer;
+        font-size: 0.78rem;
+        font-family: inherit;
+        color: #475569;
+        transition:
+          background 0.15s,
+          color 0.15s,
+          border-color 0.15s;
+        white-space: nowrap;
+      }
+      .kb-btn:hover {
+        background: #ede9fe;
+        color: #7c3aed;
+        border-color: #c4b5fd;
+      }
+      .kb-btn.kb-active {
+        background: #ede9fe;
+        color: #7c3aed;
+        border-color: #c4b5fd;
+        font-weight: 700;
+      }
+      .kb-status {
+        font-size: 0.72rem;
+        text-align: center;
+        margin-top: 4px;
+        white-space: nowrap;
+      }
+      .kb-status.kb-status-empty {
+        color: #f59e0b;
+      }
+      .kb-status.kb-status-ready {
+        color: #16a34a;
+        font-weight: 600;
+      }
+      .ai-sessions-panel {
+        flex: 1;
+        overflow-y: auto;
+        display: none;
+        flex-direction: column;
+      }
+      .ai-session-new-btn {
+        padding: 11px 14px;
+        border-bottom: 1px solid #e2e8f0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.84rem;
+        color: #7c3aed;
+        font-weight: 600;
+        background: #faf5ff;
+        transition: background 0.15s;
+        flex-shrink: 0;
+      }
+      .ai-session-new-btn:hover {
+        background: #ede9fe;
+      }
+      .ai-session-item {
+        padding: 10px 14px;
+        cursor: pointer;
+        border-bottom: 1px solid #f8fafc;
+        transition: background 0.15s;
+      }
+      .ai-session-item:hover {
+        background: #f8fafc;
+      }
+      .ai-session-item.active {
+        background: #ede9fe;
+      }
+      .ai-session-item-title {
+        font-size: 0.85rem;
+        color: #1e293b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ai-session-item-date {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        margin-top: 2px;
+      }
 
       @media (max-width: 580px) {
-        .room-list { width: 56px; }
-        .room-info, .room-meta, .room-section-title, .room-search { display: none; }
-        .room-item { justify-content: center; }
+        .room-list {
+          width: 56px;
+        }
+        .room-info,
+        .room-meta,
+        .room-section-title,
+        .room-search {
+          display: none;
+        }
+        .room-item {
+          justify-content: center;
+        }
       }
 
       /* 멘션 드롭다운 */
       .mention-dropdown {
-        position: fixed; display: none;
-        background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.14); z-index: 999;
-        min-width: 180px; max-height: 200px; overflow-y: auto;
+        position: fixed;
+        display: none;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.14);
+        z-index: 999;
+        min-width: 180px;
+        max-height: 200px;
+        overflow-y: auto;
       }
       .mention-item {
-        padding: 9px 14px; cursor: pointer;
-        display: flex; align-items: center; gap: 9px; font-size: 0.85rem;
+        padding: 9px 14px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-size: 0.85rem;
       }
-      .mention-item:hover, .mention-item.focused { background: #ede9fe; }
+      .mention-item:hover,
+      .mention-item.focused {
+        background: #ede9fe;
+      }
       .mention-avatar {
-        width: 26px; height: 26px; border-radius: 50%;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
         background: linear-gradient(135deg, #667eea, #764ba2);
-        color: #fff; display: flex; align-items: center; justify-content: center;
-        font-size: 0.75rem; font-weight: 700; flex-shrink: 0;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+      .mention-highlight {
+        color: #7c3aed;
+        font-weight: 700;
+      }
+      .mention-me {
+        background: #ede9fe;
+        border-radius: 3px;
+        padding: 0 2px;
+      }
+      .msg-row.mine .mention-highlight {
+        color: #ddd6fe;
       }
 
-      /* 버블 내 @멘션 강조 */
-      .mention-highlight { color: #7c3aed; font-weight: 700; }
-      .mention-me { background: #ede9fe; border-radius: 3px; padding: 0 2px; }
-      .msg-row.mine .mention-highlight { color: #ddd6fe; }
+      /* 시스템 공지 */
+      .room-notice {
+        text-align: center;
+        font-size: 0.75rem;
+        color: #94a3b8;
+        padding: 4px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .room-notice::before,
+      .room-notice::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: #e2e8f0;
+      }
+      .room-notice span {
+        background: #f1f5f9;
+        padding: 2px 10px;
+        border-radius: 10px;
+        white-space: nowrap;
+      }
+
+      /* 검색 하이라이트 애니메이션 */
+      @keyframes highlight-fade {
+        0%,
+        100% {
+          background: transparent;
+        }
+        20%,
+        80% {
+          background: #fef08a;
+        }
+      }
+      .msg-highlight {
+        animation: highlight-fade 2s ease;
+        border-radius: 8px;
+      }
     </style>
   </head>
   <body>
     <div class="top-bar">
       <a href="/">&#8592;</a>
-      <h1>💬 팀 채팅</h1>
-      <button class="btn-new-group" onclick="openGroupModal()">+ 그룹</button>
+      <h1>💬 Chatting</h1>
+      <a
+        href="/board.html"
+        style="
+          color: #fff;
+          text-decoration: none;
+          font-size: 0.82rem;
+          padding: 6px 14px;
+          background: rgba(255, 255, 255, 0.2);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 16px;
+        "
+        >📋 Board</a
+      >
+      <button class="btn-new-group" onclick="openGroupModal()">
+        Team Chatting 만들기
+      </button>
     </div>
 
     <div class="chat-body">
-      <!-- 룸 목록 -->
       <div class="room-list">
-        <div class="room-search"><input type="text" placeholder="검색..." oninput="filterRooms(this.value)" /></div>
+        <div class="room-tabs">
+          <button
+            class="room-tab active"
+            id="tabRooms"
+            onclick="switchTab('rooms')"
+          >
+            💬 Team Messages
+          </button>
+          <button class="room-tab" id="tabUsers" onclick="switchTab('users')">
+            👥 Direct Messages
+          </button>
+          <button class="room-tab" id="tabAi" onclick="switchTab('ai')">
+            ✨Work Mate
+          </button>
+        </div>
+        <div class="room-search">
+          <input
+            type="text"
+            placeholder="검색..."
+            oninput="filterRooms(this.value)"
+          />
+        </div>
         <div class="rooms" id="roomList"></div>
+        <div class="users-panel" id="userList"></div>
+        <div class="ai-sessions-panel" id="aiSessionList"></div>
       </div>
-
-      <!-- 채팅창 -->
       <div class="chat-window" id="chatWindow">
-        <div class="placeholder"><span class="icon">💬</span><span>채팅방을 선택하세요</span></div>
+        <div class="placeholder">
+          <span class="icon">💬</span><span>채팅방을 선택하세요</span>
+        </div>
+      </div>
+      <div class="ai-chat-panel" id="aiChatPanel">
+        <div class="chat-top">
+          <div
+            class="room-avatar"
+            style="
+              background: linear-gradient(135deg, #a855f7, #7c3aed);
+              font-size: 1.1rem;
+            "
+          >
+            ✨
+          </div>
+          <div class="chat-top-info">
+            <div class="chat-top-name">Work Mate AI</div>
+            <div class="chat-top-sub">
+              당신의 일을 도와주는 최고의 AI 어시스턴트
+            </div>
+          </div>
+          <div
+            class="chat-top-actions"
+            style="display: flex; flex-direction: column; align-items: center"
+          >
+            <button class="kb-btn" id="kbBtn" onclick="toggleKbPanel()">
+              📚 지식베이스
+            </button>
+            <div class="kb-status kb-status-empty" id="kbStatus">
+              📝 지식베이스를 추가해야 사용할 수 있습니다
+            </div>
+            <!--button
+              class="icon-btn"
+              onclick="startNewAiSession()"
+              title="새 대화"
+            >
+              ✏️
+            </button-->
+          </div>
+        </div>
+        <div class="ai-kb-panel" id="aiKbPanel">
+          <div class="ai-kb-header">
+            <div>
+              <div class="ai-kb-header-title">📚 지식베이스</div>
+              <div class="ai-kb-header-sub">
+                AI가 지식을 쌓고 학습해야되는 내용을 입력해주는 공간입니다.
+              </div>
+            </div>
+            <button class="icon-btn" onclick="toggleKbPanel()">✕</button>
+          </div>
+          <textarea
+            class="ai-kb-textarea"
+            id="aiKbText"
+            placeholder="회사 정보, 업무 규칙, 자주 묻는 질문 등 AI가 참고할 내용을 자유롭게 입력하세요.
+
+예시)
+- 회사명: OO 주식회사
+- 업무시간: 9시~18시
+- 점심시간: 12시~13시
+- 주요 서비스: ..."
+            oninput="updateKbCount()"
+          ></textarea>
+          <div class="ai-kb-footer">
+            <span class="ai-kb-count" id="aiKbCount">0자</span>
+            <div style="display: flex; gap: 6px">
+              <button class="ai-kb-clear" onclick="clearKb()">초기화</button>
+              <button class="ai-kb-save" onclick="saveKb()">저장</button>
+            </div>
+          </div>
+        </div>
+        <div class="ai-messages" id="aiMessages"></div>
+        <div class="ai-input-row">
+          <input
+            type="text"
+            id="aiInput"
+            placeholder="메시지를 입력하세요.(Ctrl+Enter 전송)"
+            onkeydown="
+              if (event.ctrlKey && event.key === 'Enter') {
+                event.preventDefault();
+                sendAiMsg();
+              }
+            "
+          />
+          <button class="ai-send-btn" onclick="sendAiMsg()">전송</button>
+        </div>
       </div>
     </div>
 
     <!-- 그룹 생성 모달 -->
     <div class="modal-overlay" id="groupModal">
       <div class="modal">
-        <h2>그룹 채팅 만들기</h2>
+        <h2>Team Chatting 만들기</h2>
         <input type="text" id="groupName" placeholder="그룹 이름" />
         <div class="member-check-list" id="memberCheckList"></div>
         <div class="modal-btns">
@@ -233,39 +1416,97 @@
       </div>
     </div>
 
-    <!-- 멘션 드롭다운 (body 최상단에 위치해야 overflow 클리핑 없음) -->
+    <!-- 룸 설정 모달 -->
+    <div class="modal-overlay" id="settingsModal">
+      <div class="modal">
+        <h2>⚙️ 채팅방 설정</h2>
+        <div id="settingsContent"></div>
+        <div class="modal-btns">
+          <button class="btn-cancel" onclick="closeSettingsModal()">
+            닫기
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 멘션 드롭다운 -->
     <div id="mentionDropdown" class="mention-dropdown"></div>
+
+    <!-- 이모지 피커 -->
+    <div id="emojiPicker" class="emoji-picker">
+      <span class="emoji-option" onclick="selectEmoji('👍')">👍</span>
+      <span class="emoji-option" onclick="selectEmoji('❤️')">❤️</span>
+      <span class="emoji-option" onclick="selectEmoji('😂')">😂</span>
+      <span class="emoji-option" onclick="selectEmoji('😮')">😮</span>
+      <span class="emoji-option" onclick="selectEmoji('😢')">😢</span>
+      <span class="emoji-option" onclick="selectEmoji('🙏')">🙏</span>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/config.js"></script>
     <script>
-      let me = null, socket = null;
-      let allRooms = [], allUsers = [];
+      let me = null,
+        socket = null;
+      let allRooms = [],
+        allUsers = [];
       let currentRoomId = null;
       let pendingFile = null;
-      let mentionList = []; // 현재 드롭다운에 표시 중인 유저 목록
+      let mentionList = [];
+      let messageReactions = new Map(); // messageId → [{emoji,cnt,user_ids}]
+      let emojiTargetMsgId = null;
+
+      // ── 핀 ──
+      const PINNED_KEY = "chat_pinned_rooms";
+      function getPinned() {
+        try {
+          return new Set(JSON.parse(localStorage.getItem(PINNED_KEY)) || []);
+        } catch {
+          return new Set();
+        }
+      }
+      function savePinned(set) {
+        localStorage.setItem(PINNED_KEY, JSON.stringify([...set]));
+      }
+      function togglePin(roomId, e) {
+        e.stopPropagation();
+        const pinned = getPinned();
+        if (pinned.has(roomId)) pinned.delete(roomId);
+        else pinned.add(roomId);
+        savePinned(pinned);
+        renderRooms(allRooms);
+      }
 
       function fmtTime(s) {
         const d = new Date(s);
-        return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+        return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
       }
       function fmtDate(s) {
         const d = new Date(s);
-        return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
+        return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
       }
       function esc(s) {
-        return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+        return String(s || "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
       }
-      function isImage(type) { return type && type.startsWith("image/"); }
+      function isImage(type) {
+        return type && type.startsWith("image/");
+      }
 
       async function init() {
         me = await checkAuth();
         if (!me) return;
 
-        socket = io(SERVER_URL, { auth: { userId: me.id }, withCredentials: true });
+        socket = io(SERVER_URL, {
+          auth: { userId: me.id },
+          withCredentials: true,
+        });
+
         socket.on("new_message", ({ roomId, msg }) => {
           if (roomId == currentRoomId) {
             if (msg.from_id != me.id) {
+              msg.reactions = [];
               appendMsg(msg);
               scrollBottom();
               socket.emit("mark_read", { roomId });
@@ -273,10 +1514,36 @@
           }
           updateRoomLastMsg(roomId, msg);
         });
+
         socket.on("online_users", () => {});
+
         socket.on("messages_read", ({ roomId }) => {
           if (roomId == currentRoomId) {
-            document.querySelectorAll(".msg-read").forEach(el => el.textContent = "읽음");
+            document
+              .querySelectorAll(".msg-read")
+              .forEach((el) => (el.textContent = "읽음"));
+          }
+        });
+
+        socket.on("room_notice", ({ roomId, text }) => {
+          if (roomId == currentRoomId) {
+            const el = document.getElementById("messages");
+            if (el) {
+              el.innerHTML += `<div class="room-notice"><span>${esc(text)}</span></div>`;
+              el.scrollTop = el.scrollHeight;
+            }
+          }
+        });
+
+        socket.on("reaction_updated", ({ messageId, reactions }) => {
+          messageReactions.set(messageId, reactions);
+          const bar = document.querySelector(
+            `.reaction-bar[data-mid="${messageId}"]`,
+          );
+          if (bar) {
+            const newBar = document.createElement("div");
+            newBar.outerHTML; // dummy
+            bar.outerHTML = buildReactionBar(messageId, reactions);
           }
         });
 
@@ -285,8 +1552,8 @@
 
       async function loadData() {
         [allRooms, allUsers] = await Promise.all([
-          apiFetch("/api/chat/rooms").then(r => r.json()),
-          apiFetch("/api/chat/users").then(r => r.json()),
+          apiFetch("/api/chat/rooms").then((r) => r.json()),
+          apiFetch("/api/chat/users").then((r) => r.json()),
         ]);
         renderRooms(allRooms);
         renderUserBtns();
@@ -296,59 +1563,409 @@
         if (room.type === "group") return room.name || "그룹";
         const ids = (room.member_ids || "").split(",");
         const names = (room.member_names || "").split(",");
-        const idx = ids.findIndex(id => id != me.id);
+        const idx = ids.findIndex((id) => id != me.id);
         return names[idx] || "알 수 없음";
       }
 
       function renderRooms(rooms) {
         const el = document.getElementById("roomList");
-        el.innerHTML = rooms.length ? rooms.map(r => {
-          const name = getRoomDisplayName(r);
-          const letter = name[0]?.toUpperCase() || "?";
-          const lastMsg = r.last_file ? `📎 ${r.last_file}` : (r.last_msg || "");
-          return `
+        const pinned = getPinned();
+        const groups = rooms.filter((r) => r.type === "group");
+        const sorted = [...groups].sort((a, b) => {
+          const aPinned = pinned.has(a.id) ? 1 : 0;
+          const bPinned = pinned.has(b.id) ? 1 : 0;
+          if (bPinned !== aPinned) return bPinned - aPinned;
+          const aUnread = (a.unread || 0) > 0 ? 1 : 0;
+          const bUnread = (b.unread || 0) > 0 ? 1 : 0;
+          if (bUnread !== aUnread) return bUnread - aUnread;
+          return new Date(b.last_at || 0) - new Date(a.last_at || 0);
+        });
+
+        el.innerHTML = sorted.length
+          ? sorted
+              .map((r) => {
+                const name = getRoomDisplayName(r);
+                const lastMsg = r.last_file
+                  ? `📎 ${r.last_file}`
+                  : r.last_msg || "";
+                const isPinned = pinned.has(r.id);
+                return `
           <div class="room-item ${r.id == currentRoomId ? "active" : ""}" onclick="openRoom(${r.id})">
-            <div class="room-avatar ${r.type}">${r.type === "group" ? "👥" : letter}</div>
+            <div class="room-avatar group">👥</div>
             <div class="room-info">
-              <div class="room-name">${esc(name)}</div>
+              <div class="room-name">${isPinned ? "📌 " : ""}${esc(name)}</div>
               <div class="room-last">${esc(lastMsg)}</div>
             </div>
             <div class="room-meta">
               ${r.last_at ? `<span class="room-time">${fmtTime(r.last_at)}</span>` : ""}
               ${r.unread > 0 ? `<span class="unread-badge">${r.unread}</span>` : ""}
             </div>
+            <button class="pin-btn ${isPinned ? "pinned" : ""}" onclick="togglePin(${r.id}, event)" title="${isPinned ? "고정 해제" : "상단 고정"}">${isPinned ? "📌" : "📍"}</button>
           </div>`;
-        }).join("") : `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:0.82rem">아직 대화가 없습니다</div>`;
-
-        // 팀원 바로가기
-        el.innerHTML += `<div class="room-section-title">팀원</div>` +
-          allUsers.map(u => `
-          <div class="room-item" onclick="startDirect(${u.id})">
-            <div class="room-avatar direct">${(u.name||u.email)[0].toUpperCase()}</div>
-            <div class="room-info">
-              <div class="room-name">${esc(u.name||u.email)}</div>
-              <div class="room-last">${esc(u.email)}</div>
-            </div>
-          </div>`).join("");
+              })
+              .join("")
+          : `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:0.82rem">그룹 채팅이 없습니다</div>`;
       }
 
       function renderUserBtns() {
-        document.getElementById("memberCheckList").innerHTML = allUsers.map(u => `
+        document.getElementById("memberCheckList").innerHTML = allUsers
+          .map(
+            (u) => `
           <label class="member-check-item">
             <input type="checkbox" value="${u.id}" />
             ${esc(u.name || u.email)}
             <span style="font-size:0.72rem;color:#94a3b8;margin-left:auto">${esc(u.email)}</span>
-          </label>`).join("");
+          </label>`,
+          )
+          .join("");
+      }
+
+      function renderUserPanel() {
+        const el = document.getElementById("userList");
+        if (!el) return;
+        const directs = allRooms.filter((r) => r.type === "direct");
+        const sorted = [...allUsers].sort((a, b) => {
+          const ra = directs.find((r) =>
+            r.member_ids?.split(",").includes(String(a.id)),
+          );
+          const rb = directs.find((r) =>
+            r.member_ids?.split(",").includes(String(b.id)),
+          );
+          const aUnread = (ra?.unread || 0) > 0 ? 1 : 0;
+          const bUnread = (rb?.unread || 0) > 0 ? 1 : 0;
+          if (bUnread !== aUnread) return bUnread - aUnread;
+          return new Date(rb?.last_at || 0) - new Date(ra?.last_at || 0);
+        });
+        el.innerHTML = sorted.length
+          ? sorted
+              .map((u) => {
+                const room = directs.find((r) =>
+                  r.member_ids?.split(",").includes(String(u.id)),
+                );
+                const unread = room?.unread || 0;
+                const lastMsg = room
+                  ? room.last_file
+                    ? `📎 ${room.last_file}`
+                    : room.last_msg || ""
+                  : "";
+                const lastAt = room?.last_at ? fmtTime(room.last_at) : "";
+                return `
+          <div class="room-item ${room?.id == currentRoomId ? "active" : ""}" onclick="startDirect(${u.id})">
+            <div class="room-avatar direct">${(u.name || u.email)[0].toUpperCase()}</div>
+            <div class="room-info">
+              <div class="room-name">${esc(u.name || u.email)}</div>
+              <div class="room-last">${esc(lastMsg) || esc(u.email)}</div>
+            </div>
+            <div class="room-meta">
+              ${lastAt ? `<span class="room-time">${lastAt}</span>` : ""}
+              ${unread > 0 ? `<span class="unread-badge">${unread}</span>` : ""}
+            </div>
+          </div>`;
+              })
+              .join("")
+          : `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:0.82rem">팀원이 없습니다</div>`;
+      }
+
+      function switchTab(tab) {
+        const roomsEl = document.getElementById("roomList");
+        const usersEl = document.getElementById("userList");
+        const searchEl = document.querySelector(".room-search");
+        const chatWin = document.getElementById("chatWindow");
+        const aiPanel = document.getElementById("aiChatPanel");
+        const tabRooms = document.getElementById("tabRooms");
+        const tabUsers = document.getElementById("tabUsers");
+        const tabAi = document.getElementById("tabAi");
+        [tabRooms, tabUsers, tabAi].forEach((t) =>
+          t.classList.remove("active"),
+        );
+        const sessEl = document.getElementById("aiSessionList");
+        if (tab === "rooms") {
+          roomsEl.style.display = "block";
+          usersEl.style.display = "none";
+          sessEl.style.display = "none";
+          searchEl.style.display = "block";
+          chatWin.style.display = "flex";
+          aiPanel.classList.remove("active");
+          tabRooms.classList.add("active");
+        } else if (tab === "users") {
+          roomsEl.style.display = "none";
+          usersEl.style.display = "block";
+          sessEl.style.display = "none";
+          searchEl.style.display = "none";
+          chatWin.style.display = "flex";
+          aiPanel.classList.remove("active");
+          tabUsers.classList.add("active");
+          renderUserPanel();
+        } else {
+          roomsEl.style.display = "none";
+          usersEl.style.display = "none";
+          sessEl.style.display = "flex";
+          searchEl.style.display = "none";
+          chatWin.style.display = "none";
+          aiPanel.classList.add("active");
+          tabAi.classList.add("active");
+          if (!aiInitialized) {
+            startNewAiSession();
+            aiInitialized = true;
+          }
+          fetchKb();
+          renderAiSessionList();
+        }
+      }
+
+      // ── Work Mate AI ──
+      const AI_STORAGE_KEY = "workmate_chat_sessions";
+      let aiHistory = [],
+        aiMsgs = [],
+        currentAiSessionId = null,
+        aiInitialized = false,
+        cachedKb = null;
+
+      function loadKb() {
+        return cachedKb ?? "";
+      }
+
+      async function fetchKb() {
+        try {
+          const res = await apiFetch("/api/ai/knowledge-base");
+          const { content } = await res.json();
+          cachedKb = content || "";
+        } catch {
+          if (cachedKb === null) cachedKb = "";
+        }
+        updateKbBtn();
+      }
+
+      async function toggleKbPanel() {
+        const panel = document.getElementById("aiKbPanel");
+        const msgs = document.getElementById("aiMessages");
+        const inputRow = document.querySelector(".ai-input-row");
+        const isOpen = panel.classList.toggle("open");
+        msgs.style.display = isOpen ? "none" : "";
+        inputRow.style.display = isOpen ? "none" : "";
+        if (isOpen) {
+          if (cachedKb === null) await fetchKb();
+          document.getElementById("aiKbText").value = loadKb();
+          updateKbCount();
+        }
+      }
+
+      function updateKbCount() {
+        const len = document.getElementById("aiKbText").value.length;
+        document.getElementById("aiKbCount").textContent =
+          `${len.toLocaleString()}자`;
+      }
+
+      function clearKb() {
+        document.getElementById("aiKbText").value = "";
+        updateKbCount();
+      }
+
+      async function saveKb() {
+        const text = document.getElementById("aiKbText").value.trim();
+        try {
+          await apiFetch("/api/ai/knowledge-base", {
+            method: "PUT",
+            body: JSON.stringify({ content: text }),
+          });
+          cachedKb = text;
+        } catch {
+          appendAiMsg("system", "⚠️ 지식베이스 저장에 실패했습니다.");
+          return;
+        }
+        toggleKbPanel();
+        updateKbBtn();
+        if (!text) {
+          appendAiMsg("system", "지식베이스가 초기화되었습니다.");
+          return;
+        }
+        const lines = text.split("\n").filter((l) => l.trim()).length;
+        const chars = text.length;
+        appendAiMsg("system", "📚 지식베이스 학습 중...");
+        setTimeout(() => {
+          appendAiMsg(
+            "system",
+            `✅ 학습 완료 — 총 ${chars.toLocaleString()}자 · ${lines}줄 학습됨`,
+          );
+        }, 900);
+      }
+
+      function updateKbBtn() {
+        const btn = document.getElementById("kbBtn");
+        const status = document.getElementById("kbStatus");
+        if (!btn) return;
+        const hasKb = !!loadKb();
+        btn.classList.toggle("kb-active", hasKb);
+        if (status) {
+          if (hasKb) {
+            status.textContent = "✅ 지식베이스 추가완료";
+            status.className = "kb-status kb-status-ready";
+          } else {
+            status.textContent = "📝 지식베이스를 추가해야 사용할 수 있습니다";
+            status.className = "kb-status kb-status-empty";
+          }
+        }
+      }
+
+      function loadAiSessions() {
+        try {
+          return JSON.parse(localStorage.getItem(AI_STORAGE_KEY)) || [];
+        } catch {
+          return [];
+        }
+      }
+      function saveAiSessions(s) {
+        localStorage.setItem(AI_STORAGE_KEY, JSON.stringify(s));
+      }
+
+      function saveCurrentAiSession() {
+        if (!aiMsgs.filter((m) => m.role === "user").length) return;
+        const sessions = loadAiSessions();
+        const title = aiMsgs.find((m) => m.role === "user").text.slice(0, 30);
+        const session = {
+          id: currentAiSessionId,
+          title,
+          time: Date.now(),
+          messages: aiMsgs,
+        };
+        const idx = sessions.findIndex((s) => s.id === currentAiSessionId);
+        if (idx >= 0) sessions[idx] = session;
+        else sessions.unshift(session);
+        saveAiSessions(sessions.slice(0, 30));
+      }
+
+      function startNewAiSession() {
+        saveCurrentAiSession();
+        currentAiSessionId = Date.now().toString();
+        aiHistory = [];
+        aiMsgs = [];
+        document.getElementById("aiMessages").innerHTML = "";
+        appendAiMsg(
+          "system",
+          "안녕하세요. 질문사항이나 해결하고 싶은 것을 물어보세요.",
+        );
+        renderAiSessionList();
+      }
+
+      function renderAiSessionList() {
+        const el = document.getElementById("aiSessionList");
+        if (!el) return;
+        const sessions = loadAiSessions();
+        let html = `<div class="ai-session-new-btn" onclick="startNewAiSession()">✏️ AI와 새로운 대화</div>`;
+        if (!sessions.length) {
+          html += `<div style="padding:16px;text-align:center;color:#94a3b8;font-size:0.82rem">이전 대화가 없습니다</div>`;
+        } else {
+          html += sessions
+            .map((s) => {
+              const date = new Date(s.time).toLocaleDateString("ko-KR", {
+                month: "short",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              return `<div class="ai-session-item ${s.id === currentAiSessionId ? "active" : ""}" onclick="viewAiSession('${s.id}')">
+              <div class="ai-session-item-title">${esc(s.title)}</div>
+              <div class="ai-session-item-date">${date}</div>
+            </div>`;
+            })
+            .join("");
+        }
+        el.innerHTML = html;
+      }
+
+      function viewAiSession(sessionId) {
+        const session = loadAiSessions().find((s) => s.id === sessionId);
+        if (!session) return;
+        currentAiSessionId = session.id;
+        aiMsgs = [...session.messages];
+        aiHistory = session.messages.map((m) => ({
+          role: m.role,
+          parts: [{ text: m.text }],
+        }));
+        const box = document.getElementById("aiMessages");
+        box.innerHTML = "";
+        session.messages.forEach((m) => {
+          const div = document.createElement("div");
+          div.className = `chat-msg chat-msg-${m.role}`;
+          div.innerHTML = m.text.replace(/\n/g, "<br>");
+          box.appendChild(div);
+        });
+        box.scrollTop = box.scrollHeight;
+        renderAiSessionList();
+      }
+
+      function appendAiMsg(role, text) {
+        const box = document.getElementById("aiMessages");
+        const div = document.createElement("div");
+        div.className = `chat-msg chat-msg-${role}`;
+        div.innerHTML = text.replace(/\n/g, "<br>");
+        box.appendChild(div);
+        box.scrollTop = box.scrollHeight;
+        if (role !== "system") aiMsgs.push({ role, text });
+      }
+
+      async function sendAiMsg() {
+        const input = document.getElementById("aiInput");
+        const text = input.value.trim();
+        if (!text) return;
+        input.value = "";
+
+        if (!loadKb()) {
+          appendAiMsg("system", "📝 지식베이스가 아직 추가되지 않았습니다. 지식베이스를 추가하면 AI가 더 정확하게 답변할 수 있습니다.");
+        }
+
+        appendAiMsg("user", text);
+        aiHistory.push({ role: "user", content: text });
+
+        const thinkingEl = document.createElement("div");
+        thinkingEl.className = "chat-msg chat-msg-model chat-thinking";
+        thinkingEl.textContent = "답변 생성 중...";
+        document.getElementById("aiMessages").appendChild(thinkingEl);
+        document.getElementById("aiMessages").scrollTop = 999999;
+        try {
+          const res = await apiFetch("/api/ai/chat", {
+            method: "POST",
+            body: JSON.stringify({ messages: aiHistory }),
+          });
+          const data = await res.json();
+          thinkingEl.remove();
+          if (!res.ok) {
+            appendAiMsg(
+              "system",
+              `⚠️ 오류가 발생했습니다: ${data.error || res.status}`,
+            );
+            aiHistory.pop();
+            return;
+          }
+          const reply = data.reply || "(응답 없음)";
+          aiHistory.push({ role: "assistant", content: reply });
+          appendAiMsg("model", reply);
+          saveCurrentAiSession();
+          renderAiSessionList();
+        } catch {
+          thinkingEl.remove();
+          appendAiMsg(
+            "system",
+            "⚠️ 현재 고객님 AI설정이 안되어있어 사용이 불가능합니다. 고객센터를 통해 문의주시면 처리 도와드리겠습니다.",
+          );
+          aiHistory.pop();
+        }
       }
 
       function filterRooms(val) {
         const q = val.toLowerCase();
-        const filtered = allRooms.filter(r => getRoomDisplayName(r).toLowerCase().includes(q));
+        const filtered = allRooms.filter(
+          (r) =>
+            r.type === "group" &&
+            getRoomDisplayName(r).toLowerCase().includes(q),
+        );
         renderRooms(q ? filtered : allRooms);
       }
 
       async function startDirect(userId) {
-        const res = await apiFetch(`/api/chat/rooms/direct/${userId}`, { method: "POST" });
+        const res = await apiFetch(`/api/chat/rooms/direct/${userId}`, {
+          method: "POST",
+        });
         const { roomId } = await res.json();
         await loadData();
         openRoom(roomId);
@@ -356,23 +1973,38 @@
 
       async function openRoom(roomId) {
         currentRoomId = roomId;
-        document.querySelectorAll(".room-item").forEach(el => el.classList.remove("active"));
-        const room = allRooms.find(r => r.id == roomId);
-        if (room) { room.unread = 0; renderRooms(allRooms); }
+        messageReactions.clear();
+        const room = allRooms.find((r) => r.id == roomId);
+        if (room) {
+          room.unread = 0;
+        }
+        renderRooms(allRooms);
 
         const win = document.getElementById("chatWindow");
         const displayName = room ? getRoomDisplayName(room) : "채팅";
         const isGroup = room?.type === "group";
-        const memberNames = room ? (room.member_names||"").split(",").filter(Boolean) : [];
-        const memberInfo = isGroup ? `👥 ${memberNames.length}명 · ${memberNames.map(n => esc(n)).join(", ")}` : "";
+        const memberNames = room
+          ? (room.member_names || "").split(",").filter(Boolean)
+          : [];
+        const memberInfo = isGroup
+          ? `👥 ${memberNames.length}명 · ${memberNames.map((n) => esc(n)).join(", ")}`
+          : "";
 
         win.innerHTML = `
           <div class="chat-top">
             <div class="room-avatar ${isGroup ? "group" : "direct"}" style="width:32px;height:32px;font-size:0.8rem">${isGroup ? "👥" : displayName[0]?.toUpperCase()}</div>
             <div class="chat-top-info">
               <div class="chat-top-name">${esc(displayName)}</div>
-              <div class="chat-top-sub">${isGroup ? memberInfo : ""}</div>
+              <div class="chat-top-sub">${memberInfo}</div>
             </div>
+            <div class="chat-top-actions">
+              <button class="icon-btn" onclick="toggleSearch()" title="메시지 검색">🔍</button>
+              <button class="icon-btn" onclick="openRoomSettings(${roomId})" title="채팅방 설정">⚙️</button>
+            </div>
+          </div>
+          <div class="search-panel" id="searchPanel">
+            <input type="text" id="searchInput" placeholder="메시지 검색..." oninput="searchMessages(this.value)" />
+            <div class="search-results" id="searchResults"></div>
           </div>
           <div id="filePreview" style="display:none" class="file-preview">
             <span id="filePreviewName"></span>
@@ -383,28 +2015,43 @@
             <label class="attach-btn" title="파일 첨부">
               📎<input type="file" id="fileInput" style="display:none" onchange="onFileSelect(this)" />
             </label>
-            <textarea class="chat-input" id="chatInput" rows="1" placeholder="메시지 입력..." onkeydown="handleKey(event)"></textarea>
+            <textarea class="chat-input" id="chatInput" rows="1" placeholder="메시지를 입력하세요.(Ctrl+Enter 전송)" onkeydown="handleKey(event)"></textarea>
             <button class="send-btn" onclick="sendMsg()">➤</button>
           </div>`;
 
-        const history = await apiFetch(`/api/chat/rooms/${roomId}/messages`).then(r => r.json());
+        const history = await apiFetch(
+          `/api/chat/rooms/${roomId}/messages`,
+        ).then((r) => r.json());
         const msgEl = document.getElementById("messages");
         let lastDate = "";
-        history.forEach(m => {
+
+        history.forEach((m) => {
+          if (m.msg_type === "system") {
+            msgEl.innerHTML += `<div class="room-notice"><span>${esc(m.content)}</span></div>`;
+            return;
+          }
+          if (m.reactions) messageReactions.set(m.id, m.reactions);
           const d = fmtDate(m.created_at);
-          if (d !== lastDate) { lastDate = d; msgEl.innerHTML += `<div class="date-sep">${d}</div>`; }
+          if (d !== lastDate) {
+            lastDate = d;
+            msgEl.innerHTML += `<div class="date-sep">${d}</div>`;
+          }
           msgEl.innerHTML += buildBubble(m);
         });
         scrollBottom();
         socket.emit("mark_read", { roomId });
 
         const input = document.getElementById("chatInput");
-        // 그룹채팅 방에 있는 멤버만 멘션 가능 (@모두 포함)
-        const roomMembers = room?.type === "group"
+        const roomMembers = isGroup
           ? (() => {
               const ids = (room.member_ids || "").split(",").map(Number);
-              const members = allUsers.filter(u => ids.includes(u.id) && u.id !== me.id);
-              return [{ id: "__all__", name: "모두", email: "", _isAll: true }, ...members];
+              const members = allUsers.filter(
+                (u) => ids.includes(u.id) && u.id !== me.id,
+              );
+              return [
+                { id: "__all__", name: "모두", email: "", _isAll: true },
+                ...members,
+              ];
             })()
           : [];
 
@@ -417,14 +2064,122 @@
             else hideMentionDropdown();
           }
         });
-        input.addEventListener("blur", () => setTimeout(hideMentionDropdown, 150));
+        input.addEventListener("blur", () =>
+          setTimeout(hideMentionDropdown, 150),
+        );
+      }
 
-        renderRooms(allRooms);
+      // ── 검색 ──
+      function toggleSearch() {
+        const panel = document.getElementById("searchPanel");
+        if (!panel) return;
+        const isOpen = panel.classList.toggle("open");
+        if (isOpen) document.getElementById("searchInput")?.focus();
+        else document.getElementById("searchResults").innerHTML = "";
+      }
+
+      let searchTimer = null;
+      async function searchMessages(q) {
+        clearTimeout(searchTimer);
+        const resultsEl = document.getElementById("searchResults");
+        if (!q.trim()) {
+          resultsEl.innerHTML = "";
+          return;
+        }
+        searchTimer = setTimeout(async () => {
+          const rows = await apiFetch(
+            `/api/chat/rooms/${currentRoomId}/search?q=${encodeURIComponent(q)}`,
+          ).then((r) => r.json());
+          if (!rows.length) {
+            resultsEl.innerHTML = `<div style="padding:10px;text-align:center;color:#94a3b8;font-size:0.8rem">결과 없음</div>`;
+            return;
+          }
+          const safeQ = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          resultsEl.innerHTML = rows
+            .map((m) => {
+              const highlighted = esc(m.content || "").replace(
+                new RegExp(safeQ, "gi"),
+                (s) => `<mark class="search-highlight">${s}</mark>`,
+              );
+              return `<div class="search-result-item" onclick="scrollToMsg(${m.id})">
+              <div class="search-result-meta">${esc(m.from_name)} · ${fmtDate(m.created_at)} ${fmtTime(m.created_at)}</div>
+              <div class="search-result-text">${highlighted}</div>
+            </div>`;
+            })
+            .join("");
+        }, 300);
+      }
+
+      function scrollToMsg(msgId) {
+        const panel = document.getElementById("searchPanel");
+        if (panel) panel.classList.remove("open");
+        const el = document.getElementById(`msg-${msgId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.add("msg-highlight");
+          setTimeout(() => el.classList.remove("msg-highlight"), 2000);
+        }
+      }
+
+      // ── 이모지 반응 ──
+      function showEmojiPicker(msgId, btnEl) {
+        emojiTargetMsgId = msgId;
+        const picker = document.getElementById("emojiPicker");
+        const rect = btnEl.getBoundingClientRect();
+        picker.style.top = rect.top - 52 + "px";
+        picker.style.left = Math.min(rect.left, window.innerWidth - 220) + "px";
+        picker.classList.add("open");
+      }
+
+      function hideEmojiPicker() {
+        document.getElementById("emojiPicker").classList.remove("open");
+        emojiTargetMsgId = null;
+      }
+
+      async function selectEmoji(emoji) {
+        if (!emojiTargetMsgId) return;
+        const msgId = emojiTargetMsgId;
+        hideEmojiPicker();
+        await _toggleReaction(msgId, emoji);
+      }
+
+      async function selectEmojiDirect(msgId, emoji) {
+        await _toggleReaction(msgId, emoji);
+      }
+
+      async function _toggleReaction(msgId, emoji) {
+        const res = await apiFetch(`/api/chat/messages/${msgId}/reactions`, {
+          method: "POST",
+          body: JSON.stringify({ emoji }),
+        });
+        const { reactions } = await res.json();
+        messageReactions.set(msgId, reactions);
+        const bar = document.querySelector(
+          `.reaction-bar[data-mid="${msgId}"]`,
+        );
+        if (bar) bar.outerHTML = buildReactionBar(msgId, reactions);
+      }
+
+      function buildReactionBar(msgId, reactions) {
+        if (!reactions || !reactions.length)
+          return `<div class="reaction-bar" data-mid="${msgId}"></div>`;
+        const pills = reactions
+          .map((r) => {
+            const uids = String(r.user_ids || "")
+              .split(",")
+              .map(Number);
+            const isMine = uids.includes(me.id);
+            return `<span class="reaction-pill ${isMine ? "mine" : ""}" onclick="selectEmojiDirect(${msgId}, '${r.emoji}')" title="${r.cnt}명 반응">${r.emoji} <span class="r-cnt">${r.cnt}</span></span>`;
+          })
+          .join("");
+        return `<div class="reaction-bar" data-mid="${msgId}">${pills}</div>`;
       }
 
       function buildBubble(m) {
         const isMine = m.from_id == me.id;
+        const reactions = m.reactions || messageReactions.get(m.id) || [];
         let content = "";
+
         if (m.file_url) {
           if (isImage(m.file_type)) {
             content = `<a href="${SERVER_URL}${m.file_url}" target="_blank"><img class="img-bubble" src="${SERVER_URL}${m.file_url}" alt="${esc(m.file_name)}" /></a>`;
@@ -434,9 +2189,17 @@
               <div class="file-info"><div class="file-name">${esc(m.file_name)}</div><div class="file-size-hint">파일 다운로드</div></div>
             </a>`;
           }
+          content = `<div class="msg-bubble-wrap">${content}</div>`;
         } else {
-          content = `<div class="msg-bubble">${highlightMentions(esc(m.content))}</div>`;
+          const emojiBtn = m.id
+            ? `<button class="emoji-trigger" onclick="showEmojiPicker(${m.id}, this)">😀+</button>`
+            : "";
+          content = `<div class="msg-bubble-wrap">
+            <div class="msg-bubble" id="msg-${m.id || ""}">${highlightMentions(esc(m.content))}</div>
+            ${emojiBtn}
+          </div>`;
         }
+
         return `
           <div class="msg-row ${isMine ? "mine" : "other"}">
             <div class="msg-col">
@@ -446,6 +2209,7 @@
                 <span class="msg-time">${fmtTime(m.created_at)}</span>
                 ${isMine ? `<span class="msg-read">${m.is_read ? "읽음" : ""}</span>` : ""}
               </div>
+              ${buildReactionBar(m.id, reactions)}
             </div>
           </div>`;
       }
@@ -462,21 +2226,109 @@
       }
 
       function updateRoomLastMsg(roomId, msg) {
-        const room = allRooms.find(r => r.id == roomId);
+        const room = allRooms.find((r) => r.id == roomId);
         if (room) {
           room.last_msg = msg.content;
           room.last_file = msg.file_name;
           room.last_at = msg.created_at;
-          if (msg.from_id != me.id && roomId != currentRoomId) room.unread = (room.unread || 0) + 1;
+          if (msg.from_id != me.id && roomId != currentRoomId)
+            room.unread = (room.unread || 0) + 1;
         }
         renderRooms(allRooms);
+      }
+
+      // ── 룸 설정 ──
+      async function openRoomSettings(roomId) {
+        const room = allRooms.find((r) => r.id == roomId);
+        const isGroup = room?.type === "group";
+        const isOwner = room?.created_by === me.id;
+
+        const members = await apiFetch(
+          `/api/chat/rooms/${roomId}/members`,
+        ).then((r) => r.json());
+        const memberIdSet = new Set(members.map((m) => m.id));
+        const nonMembers = allUsers.filter((u) => !memberIdSet.has(u.id));
+
+        let html = `<div class="settings-section">
+          <div class="settings-section-label">멤버 (${members.length}명)</div>
+          <div class="member-scroll">
+            ${members
+              .map(
+                (m) => `
+              <div class="member-list-item">
+                <div class="m-avatar">${(m.name || m.email)[0].toUpperCase()}</div>
+                <div class="m-info">
+                  <div class="m-name">${esc(m.name || m.email)}${m.id === room?.created_by ? '<span class="owner-badge">방장</span>' : ""}</div>
+                  <div class="m-email">${esc(m.email)}</div>
+                </div>
+                ${isGroup && isOwner && m.id !== me.id ? `<button class="kick-btn" onclick="kickMember(${roomId},${m.id})">내보내기</button>` : ""}
+              </div>`,
+              )
+              .join("")}
+          </div>
+        </div>`;
+
+        if (isGroup && nonMembers.length) {
+          html += `<div class="settings-section">
+            <div class="settings-section-label">멤버 추가</div>
+            <div class="add-member-row">
+              <select id="addMemberSelect">
+                ${nonMembers.map((u) => `<option value="${u.id}">${esc(u.name || u.email)}</option>`).join("")}
+              </select>
+              <button class="btn-add" onclick="addMember(${roomId})">추가</button>
+            </div>
+          </div>`;
+        }
+
+        html += `<button class="btn-leave" onclick="leaveRoom(${roomId})">채팅방 나가기</button>`;
+
+        document.getElementById("settingsContent").innerHTML = html;
+        document.getElementById("settingsModal").classList.add("open");
+      }
+
+      function closeSettingsModal() {
+        document.getElementById("settingsModal").classList.remove("open");
+      }
+
+      async function kickMember(roomId, userId) {
+        if (!confirm("이 멤버를 내보내시겠습니까?")) return;
+        await apiFetch(`/api/chat/rooms/${roomId}/members/${userId}`, {
+          method: "DELETE",
+        });
+        await loadData();
+        openRoomSettings(roomId);
+      }
+
+      async function addMember(roomId) {
+        const select = document.getElementById("addMemberSelect");
+        if (!select) return;
+        const userId = Number(select.value);
+        await apiFetch(`/api/chat/rooms/${roomId}/members`, {
+          method: "POST",
+          body: JSON.stringify({ userIds: [userId] }),
+        });
+        await loadData();
+        openRoomSettings(roomId);
+      }
+
+      async function leaveRoom(roomId) {
+        if (!confirm("채팅방을 나가시겠습니까?")) return;
+        await apiFetch(`/api/chat/rooms/${roomId}/leave`, { method: "DELETE" });
+        closeSettingsModal();
+        currentRoomId = null;
+        allRooms = allRooms.filter((r) => r.id !== roomId);
+        document.getElementById("chatWindow").innerHTML =
+          `<div class="placeholder"><span class="icon">💬</span><span>채팅방을 선택하세요</span></div>`;
+        await loadData();
       }
 
       // ── @멘션 ──
       function getMentionQuery(input) {
         const before = input.value.slice(0, input.selectionStart);
         const match = before.match(/@([^\s@]*)$/);
-        return match ? { query: match[1], start: input.selectionStart - match[0].length } : null;
+        return match
+          ? { query: match[1], start: input.selectionStart - match[0].length }
+          : null;
       }
 
       function showMentionDropdown(query, users) {
@@ -484,28 +2336,41 @@
         const dropdown = document.getElementById("mentionDropdown");
         if (!input || !dropdown) return;
 
-        mentionList = users.filter(u => {
+        mentionList = users.filter((u) => {
           const name = (u.name || u.email).toLowerCase();
-          return !query || name.includes(query.toLowerCase()) || u.email.toLowerCase().includes(query.toLowerCase());
+          return (
+            !query ||
+            name.includes(query.toLowerCase()) ||
+            u.email.toLowerCase().includes(query.toLowerCase())
+          );
         });
 
-        if (!mentionList.length) { hideMentionDropdown(); return; }
+        if (!mentionList.length) {
+          hideMentionDropdown();
+          return;
+        }
 
         const rect = input.getBoundingClientRect();
-        dropdown.style.bottom = (window.innerHeight - rect.top + 6) + "px";
+        dropdown.style.bottom = window.innerHeight - rect.top + 6 + "px";
         dropdown.style.left = rect.left + "px";
-        dropdown.innerHTML = mentionList.map((u, i) =>
-          `<div class="mention-item" data-idx="${i}" onmousedown="insertMention(${i})">
+        dropdown.innerHTML = mentionList
+          .map(
+            (u, i) =>
+              `<div class="mention-item" data-idx="${i}" onmousedown="insertMention(${i})">
             <div class="mention-avatar" style="${u._isAll ? "background:linear-gradient(135deg,#f093fb,#f5576c)" : ""}">${u._isAll ? "👥" : (u.name || u.email)[0].toUpperCase()}</div>
             <span>${u._isAll ? "<strong>모두</strong> <span style='font-size:0.75rem;color:#94a3b8'>전체 멘션</span>" : esc(u.name || u.email)}</span>
-          </div>`
-        ).join("");
+          </div>`,
+          )
+          .join("");
         dropdown.style.display = "block";
       }
 
       function hideMentionDropdown() {
         const d = document.getElementById("mentionDropdown");
-        if (d) { d.style.display = "none"; d.innerHTML = ""; }
+        if (d) {
+          d.style.display = "none";
+          d.innerHTML = "";
+        }
         mentionList = [];
       }
 
@@ -517,7 +2382,10 @@
         const mention = getMentionQuery(input);
         if (!mention) return;
         const name = user.name || user.email;
-        input.value = input.value.slice(0, mention.start) + `@${name} ` + input.value.slice(input.selectionStart);
+        input.value =
+          input.value.slice(0, mention.start) +
+          `@${name} ` +
+          input.value.slice(input.selectionStart);
         const pos = mention.start + name.length + 2;
         input.setSelectionRange(pos, pos);
         hideMentionDropdown();
@@ -528,8 +2396,8 @@
         const dropdown = document.getElementById("mentionDropdown");
         if (!dropdown) return;
         const items = [...dropdown.querySelectorAll(".mention-item")];
-        const cur = items.findIndex(el => el.classList.contains("focused"));
-        items.forEach(el => el.classList.remove("focused"));
+        const cur = items.findIndex((el) => el.classList.contains("focused"));
+        items.forEach((el) => el.classList.remove("focused"));
         let next = key === "ArrowDown" ? cur + 1 : cur - 1;
         if (next >= items.length) next = 0;
         if (next < 0) next = items.length - 1;
@@ -538,9 +2406,8 @@
 
       function highlightMentions(escapedText) {
         return escapedText.replace(/@(\S+)/g, (match, name) => {
-          if (name === "모두") {
+          if (name === "모두")
             return `<span class="mention-highlight mention-me">@모두</span>`;
-          }
           const isMe = me && (me.name === name || me.email.startsWith(name));
           return `<span class="mention-highlight${isMe ? " mention-me" : ""}">@${name}</span>`;
         });
@@ -549,14 +2416,29 @@
       function handleKey(e) {
         const dropdown = document.getElementById("mentionDropdown");
         if (dropdown && dropdown.style.display !== "none") {
-          if (e.key === "Escape") { e.preventDefault(); hideMentionDropdown(); return; }
-          if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); navigateMention(e.key); return; }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            hideMentionDropdown();
+            return;
+          }
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            e.preventDefault();
+            navigateMention(e.key);
+            return;
+          }
           if (e.key === "Enter") {
             const focused = dropdown.querySelector(".mention-item.focused");
-            if (focused) { e.preventDefault(); focused.dispatchEvent(new MouseEvent("mousedown")); return; }
+            if (focused) {
+              e.preventDefault();
+              focused.dispatchEvent(new MouseEvent("mousedown"));
+              return;
+            }
           }
         }
-        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+        if (e.key === "Enter" && e.ctrlKey) {
+          e.preventDefault();
+          sendMsg();
+        }
       }
 
       function onFileSelect(input) {
@@ -564,7 +2446,8 @@
         if (!file) return;
         pendingFile = file;
         document.getElementById("filePreview").style.display = "flex";
-        document.getElementById("filePreviewName").textContent = `📎 ${file.name}`;
+        document.getElementById("filePreviewName").textContent =
+          `📎 ${file.name}`;
       }
 
       function clearFile() {
@@ -581,32 +2464,67 @@
         if (pendingFile) {
           const fd = new FormData();
           fd.append("file", pendingFile);
-          const res = await fetch(`${SERVER_URL}/api/chat/upload`, { method: "POST", credentials: "include", body: fd });
+          const res = await fetch(`${SERVER_URL}/api/chat/upload`, {
+            method: "POST",
+            credentials: "include",
+            body: fd,
+          });
           const { url, name, type } = await res.json();
-          socket.emit("send_message", { roomId: currentRoomId, content: content || null, fileUrl: url, fileName: name, fileType: type });
-          appendMsg({ from_id: me.id, from_name: me.name, content: content||null, file_url: url, file_name: name, file_type: type, created_at: new Date().toISOString(), is_read: 0 });
+          socket.emit("send_message", {
+            roomId: currentRoomId,
+            content: content || null,
+            fileUrl: url,
+            fileName: name,
+            fileType: type,
+          });
+          appendMsg({
+            from_id: me.id,
+            from_name: me.name,
+            content: content || null,
+            file_url: url,
+            file_name: name,
+            file_type: type,
+            created_at: new Date().toISOString(),
+            is_read: 0,
+            reactions: [],
+          });
           clearFile();
         } else {
           if (!content) return;
-          appendMsg({ from_id: me.id, from_name: me.name, content, created_at: new Date().toISOString(), is_read: 0 });
+          appendMsg({
+            from_id: me.id,
+            from_name: me.name,
+            content,
+            created_at: new Date().toISOString(),
+            is_read: 0,
+            reactions: [],
+          });
           socket.emit("send_message", { roomId: currentRoomId, content });
         }
 
         scrollBottom();
-        if (input) { input.value = ""; input.style.height = "auto"; }
+        if (input) {
+          input.value = "";
+          input.style.height = "auto";
+        }
       }
 
-      // 그룹 모달
       function openGroupModal() {
         document.getElementById("groupName").value = "";
-        document.querySelectorAll("#memberCheckList input").forEach(c => c.checked = false);
+        document
+          .querySelectorAll("#memberCheckList input")
+          .forEach((c) => (c.checked = false));
         document.getElementById("groupModal").classList.add("open");
       }
-      function closeGroupModal() { document.getElementById("groupModal").classList.remove("open"); }
+      function closeGroupModal() {
+        document.getElementById("groupModal").classList.remove("open");
+      }
 
       async function createGroup() {
         const name = document.getElementById("groupName").value.trim();
-        const memberIds = [...document.querySelectorAll("#memberCheckList input:checked")].map(c => Number(c.value));
+        const memberIds = [
+          ...document.querySelectorAll("#memberCheckList input:checked"),
+        ].map((c) => Number(c.value));
         if (!name) return alert("그룹 이름을 입력하세요");
         if (!memberIds.length) return alert("멤버를 1명 이상 선택하세요");
         const res = await apiFetch("/api/chat/rooms/group", {
@@ -619,16 +2537,37 @@
         openRoom(roomId);
       }
 
-      document.getElementById("groupModal").addEventListener("click", e => {
-        if (e.target === document.getElementById("groupModal")) closeGroupModal();
+      // 모달 외부 클릭 닫기
+      document.getElementById("groupModal").addEventListener("click", (e) => {
+        if (e.target === document.getElementById("groupModal"))
+          closeGroupModal();
+      });
+      document
+        .getElementById("settingsModal")
+        .addEventListener("click", (e) => {
+          if (e.target === document.getElementById("settingsModal"))
+            closeSettingsModal();
+        });
+
+      // 이모지 피커 외부 클릭 닫기
+      document.addEventListener("click", (e) => {
+        const picker = document.getElementById("emojiPicker");
+        if (
+          !picker.contains(e.target) &&
+          !e.target.classList.contains("emoji-trigger")
+        ) {
+          hideEmojiPicker();
+        }
       });
 
       init();
 
-      // 활동 시간 측정 heartbeat
       setInterval(() => {
         if (!document.hidden) {
-          fetch("/api/report/activity", { method: "POST", credentials: "include" }).catch(() => {});
+          fetch("/api/report/activity", {
+            method: "POST",
+            credentials: "include",
+          }).catch(() => {});
         }
       }, 60000);
     </script>

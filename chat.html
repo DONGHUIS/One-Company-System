@@ -477,6 +477,7 @@
         cursor: pointer;
         transition: background 0.1s;
         user-select: none;
+        position: relative;
       }
       .reaction-pill:hover {
         background: #ede9fe;
@@ -485,6 +486,33 @@
       .reaction-pill.mine {
         background: #ede9fe;
         border-color: #a78bfa;
+      }
+      .reaction-pill[data-tooltip]:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(30, 30, 40, 0.92);
+        color: #fff;
+        font-size: 0.72rem;
+        padding: 4px 8px;
+        border-radius: 6px;
+        white-space: pre-line;
+        width: max-content;
+        pointer-events: none;
+        z-index: 100;
+      }
+      .reaction-pill[data-tooltip]:hover::before {
+        content: "";
+        position: absolute;
+        bottom: calc(100% + 2px);
+        left: 50%;
+        transform: translateX(-50%);
+        border: 4px solid transparent;
+        border-top-color: rgba(30, 30, 40, 0.92);
+        pointer-events: none;
+        z-index: 100;
       }
       .r-cnt {
         font-size: 0.72rem;
@@ -1408,6 +1436,24 @@
       <div class="modal">
         <h2>Team Chatting 만들기</h2>
         <input type="text" id="groupName" placeholder="그룹 이름" />
+        <label
+          style="
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            font-size: 0.84rem;
+            cursor: pointer;
+            color: #475569;
+          "
+        >
+          <input
+            type="checkbox"
+            id="e2eeToggle"
+            style="width: 16px; height: 16px; accent-color: #7c3aed"
+          />
+          🔒 메시지 암호화기능 사용
+        </label>
         <div class="member-check-list" id="memberCheckList"></div>
         <div class="modal-btns">
           <button class="btn-cancel" onclick="closeGroupModal()">취소</button>
@@ -1454,6 +1500,9 @@
       let mentionList = [];
       let messageReactions = new Map(); // messageId → [{emoji,cnt,user_ids}]
       let emojiTargetMsgId = null;
+      const roomKeyCache = new Map();
+      let myPrivateKey = null,
+        myPublicKeyJwk = null;
 
       // ── 핀 ──
       const PINNED_KEY = "chat_pinned_rooms";
@@ -1474,6 +1523,150 @@
         else pinned.add(roomId);
         savePinned(pinned);
         renderRooms(allRooms);
+      }
+
+      // ── E2EE 암호화 ──
+      function b64toBytes(b64) {
+        return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      }
+      function bytesToB64(bytes) {
+        return btoa(String.fromCharCode(...bytes));
+      }
+
+      async function loadOrGenerateKeyPair() {
+        const idb = await new Promise((res, rej) => {
+          const r = indexedDB.open("e2ee_db", 1);
+          r.onupgradeneeded = (e) => e.target.result.createObjectStore("keys");
+          r.onsuccess = (e) => res(e.target.result);
+          r.onerror = rej;
+        });
+        const existing = await new Promise((res) => {
+          const tx = idb.transaction("keys", "readonly");
+          const r = tx.objectStore("keys").get("keypair");
+          r.onsuccess = () => res(r.result);
+          r.onerror = () => res(null);
+        });
+        if (existing) {
+          myPrivateKey = await crypto.subtle.importKey(
+            "pkcs8",
+            existing.privateKey,
+            { name: "RSA-OAEP", hash: "SHA-256" },
+            false,
+            ["decrypt"],
+          );
+          myPublicKeyJwk = existing.publicKeyJwk;
+          return;
+        }
+        const kp = await crypto.subtle.generateKey(
+          {
+            name: "RSA-OAEP",
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: "SHA-256",
+          },
+          true,
+          ["encrypt", "decrypt"],
+        );
+        const pkcs8 = await crypto.subtle.exportKey("pkcs8", kp.privateKey);
+        myPublicKeyJwk = await crypto.subtle.exportKey("jwk", kp.publicKey);
+        myPrivateKey = kp.privateKey;
+        const tx = idb.transaction("keys", "readwrite");
+        tx.objectStore("keys").put(
+          { privateKey: pkcs8, publicKeyJwk: myPublicKeyJwk },
+          "keypair",
+        );
+      }
+
+      async function getRoomKey(roomId) {
+        if (roomKeyCache.has(roomId)) return roomKeyCache.get(roomId);
+        const res = await apiFetch(`/api/chat/rooms/${roomId}/e2ee-key`);
+        const { key: wrappedB64 } = await res.json();
+        if (!wrappedB64) {
+          socket && socket.emit("request_e2ee_key", { roomId });
+          return null;
+        }
+        try {
+          const raw = await crypto.subtle.decrypt(
+            { name: "RSA-OAEP" },
+            myPrivateKey,
+            b64toBytes(wrappedB64),
+          );
+          const k = await crypto.subtle.importKey(
+            "raw",
+            raw,
+            { name: "AES-GCM" },
+            true,
+            ["encrypt", "decrypt"],
+          );
+          roomKeyCache.set(roomId, k);
+          return k;
+        } catch {
+          return null;
+        }
+      }
+
+      async function createRoomKey(roomId, memberIds) {
+        const roomKey = await crypto.subtle.generateKey(
+          { name: "AES-GCM", length: 256 },
+          true,
+          ["encrypt", "decrypt"],
+        );
+        roomKeyCache.set(roomId, roomKey);
+        const rawKey = await crypto.subtle.exportKey("raw", roomKey);
+        const allIds = [...new Set([me.id, ...memberIds])];
+        const pubKeyRes = await apiFetch(
+          `/api/chat/users/public-keys?ids=${allIds.join(",")}`,
+        );
+        const pubKeys = await pubKeyRes.json();
+        const encryptedKeys = {};
+        for (const uid of allIds) {
+          if (!pubKeys[uid]) continue;
+          const pk = await crypto.subtle.importKey(
+            "jwk",
+            JSON.parse(pubKeys[uid]),
+            { name: "RSA-OAEP", hash: "SHA-256" },
+            false,
+            ["encrypt"],
+          );
+          const wrapped = await crypto.subtle.encrypt(
+            { name: "RSA-OAEP" },
+            pk,
+            rawKey,
+          );
+          encryptedKeys[uid] = bytesToB64(new Uint8Array(wrapped));
+        }
+        await apiFetch(`/api/chat/rooms/${roomId}/e2ee-keys`, {
+          method: "POST",
+          body: JSON.stringify({ keys: encryptedKeys }),
+        });
+        return roomKey;
+      }
+
+      async function encryptMsg(text, roomKey) {
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const enc = await crypto.subtle.encrypt(
+          { name: "AES-GCM", iv },
+          roomKey,
+          new TextEncoder().encode(text),
+        );
+        const out = new Uint8Array(12 + enc.byteLength);
+        out.set(iv);
+        out.set(new Uint8Array(enc), 12);
+        return bytesToB64(out);
+      }
+
+      async function decryptMsg(b64, roomKey) {
+        try {
+          const buf = b64toBytes(b64);
+          const dec = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv: buf.slice(0, 12) },
+            roomKey,
+            buf.slice(12),
+          );
+          return new TextDecoder().decode(dec);
+        } catch {
+          return "🔒 [복호화 실패]";
+        }
       }
 
       function fmtTime(s) {
@@ -1498,17 +1691,31 @@
         me = await checkAuth();
         if (!me) return;
 
+        await loadOrGenerateKeyPair();
+        apiFetch("/api/chat/keys/register", {
+          method: "POST",
+          body: JSON.stringify({ publicKey: JSON.stringify(myPublicKeyJwk) }),
+        }).catch(() => {});
+
         socket = io(SERVER_URL, {
           auth: { userId: me.id },
           withCredentials: true,
         });
 
-        socket.on("new_message", ({ roomId, msg }) => {
+        socket.on("new_message", async ({ roomId, msg }) => {
+          const room = allRooms.find((r) => r.id == roomId);
+          if (msg.is_encrypted && room?.is_e2ee) {
+            const rk = roomKeyCache.get(roomId);
+            msg.content = rk
+              ? await decryptMsg(msg.content, rk)
+              : "🔒 [암호화된 메시지]";
+            msg.is_encrypted = false;
+          }
           if (roomId == currentRoomId) {
+            msg.reactions = [];
+            appendMsg(msg);
+            scrollBottom();
             if (msg.from_id != me.id) {
-              msg.reactions = [];
-              appendMsg(msg);
-              scrollBottom();
               socket.emit("mark_read", { roomId });
             }
           }
@@ -1535,6 +1742,15 @@
           }
         });
 
+        socket.on("message_deleted", ({ roomId, messageId }) => {
+          if (roomId == currentRoomId) {
+            const row = document.querySelector(
+              `.msg-row[data-mid="${messageId}"]`,
+            );
+            if (row) row.remove();
+          }
+        });
+
         socket.on("reaction_updated", ({ messageId, reactions }) => {
           messageReactions.set(messageId, reactions);
           const bar = document.querySelector(
@@ -1542,12 +1758,79 @@
           );
           if (bar) {
             const newBar = document.createElement("div");
-            newBar.outerHTML; // dummy
+            newBar.outerHTML;
             bar.outerHTML = buildReactionBar(messageId, reactions);
           }
         });
 
+        socket.on("e2ee_key_request", async ({ roomId, newUserId }) => {
+          const rk = roomKeyCache.get(roomId);
+          if (!rk) return;
+          try {
+            const rawKey = await crypto.subtle.exportKey("raw", rk);
+            const pkRes = await apiFetch(
+              `/api/chat/users/public-keys?ids=${newUserId}`,
+            );
+            const pks = await pkRes.json();
+            if (!pks[newUserId]) return;
+            const pk = await crypto.subtle.importKey(
+              "jwk",
+              JSON.parse(pks[newUserId]),
+              { name: "RSA-OAEP", hash: "SHA-256" },
+              false,
+              ["encrypt"],
+            );
+            const wrapped = await crypto.subtle.encrypt(
+              { name: "RSA-OAEP" },
+              pk,
+              rawKey,
+            );
+            await apiFetch(`/api/chat/rooms/${roomId}/e2ee-keys`, {
+              method: "POST",
+              body: JSON.stringify({
+                keys: { [newUserId]: bytesToB64(new Uint8Array(wrapped)) },
+              }),
+            });
+          } catch {}
+        });
+
         await loadData();
+
+        const inviteToken = new URLSearchParams(location.search).get("invite");
+        if (inviteToken) {
+          try {
+            const infoRes = await apiFetch(`/api/chat/invite/${inviteToken}`);
+            if (infoRes.ok) {
+              const { roomName, inviterName } = await infoRes.json();
+              const ok = confirm(
+                `${inviterName}님이 "${roomName}" 채팅방에 초대했습니다.\n참여하시겠습니까?`,
+              );
+              if (ok) {
+                const joinRes = await apiFetch(
+                  `/api/chat/invite/${inviteToken}/join`,
+                  { method: "POST" },
+                );
+                if (joinRes.ok) {
+                  const { roomId } = await joinRes.json();
+                  history.replaceState(null, "", "/chat.html");
+                  await loadData();
+                  openRoom(roomId);
+                }
+              } else {
+                history.replaceState(null, "", "/chat.html");
+              }
+            } else {
+              alert("유효하지 않은 초대 링크입니다.");
+              history.replaceState(null, "", "/chat.html");
+            }
+          } catch {}
+        }
+
+        const directRoom = new URLSearchParams(location.search).get("room");
+        if (directRoom) {
+          history.replaceState(null, "", "/chat.html");
+          openRoom(Number(directRoom));
+        }
       }
 
       async function loadData() {
@@ -1585,15 +1868,18 @@
           ? sorted
               .map((r) => {
                 const name = getRoomDisplayName(r);
-                const lastMsg = r.last_file
-                  ? `📎 ${r.last_file}`
-                  : r.last_msg || "";
+                const lastMsg =
+                  r.is_e2ee && r.last_msg && !r.last_file
+                    ? "🔒 암호화된 메시지"
+                    : r.last_file
+                      ? `📎 ${r.last_file}`
+                      : r.last_msg || "";
                 const isPinned = pinned.has(r.id);
                 return `
           <div class="room-item ${r.id == currentRoomId ? "active" : ""}" onclick="openRoom(${r.id})">
             <div class="room-avatar group">👥</div>
             <div class="room-info">
-              <div class="room-name">${isPinned ? "📌 " : ""}${esc(name)}</div>
+              <div class="room-name">${isPinned ? "📌 " : ""}${r.is_e2ee ? "🔒 " : ""}${esc(name)}</div>
               <div class="room-last">${esc(lastMsg)}</div>
             </div>
             <div class="room-meta">
@@ -1807,6 +2093,26 @@
         }
       }
 
+      // 세션 id(생성 시각)가 오늘이면 작성 가능, 지난 날짜면 보기 전용
+      function isAiSessionToday(sessionId) {
+        if (!sessionId) return true; // 아직 저장되지 않은 새 대화
+        const d = new Date(Number(sessionId));
+        if (isNaN(d.getTime())) return false;
+        return d.toDateString() === new Date().toDateString();
+      }
+
+      function setAiInputEnabled(enabled) {
+        const input = document.getElementById("aiInput");
+        const btn = document.querySelector(".ai-send-btn");
+        if (input) {
+          input.disabled = !enabled;
+          input.placeholder = enabled
+            ? "메시지를 입력하세요.(Ctrl+Enter 전송)"
+            : "지난 날짜의 대화는 보기 전용입니다";
+        }
+        if (btn) btn.disabled = !enabled;
+      }
+
       function loadAiSessions() {
         try {
           return JSON.parse(localStorage.getItem(AI_STORAGE_KEY)) || [];
@@ -1844,6 +2150,7 @@
           "system",
           "안녕하세요. 질문사항이나 해결하고 싶은 것을 물어보세요.",
         );
+        setAiInputEnabled(true);
         renderAiSessionList();
       }
 
@@ -1865,7 +2172,7 @@
               });
               return `<div class="ai-session-item ${s.id === currentAiSessionId ? "active" : ""}" onclick="viewAiSession('${s.id}')">
               <div class="ai-session-item-title">${esc(s.title)}</div>
-              <div class="ai-session-item-date">${date}</div>
+              <div class="ai-session-item-date">${date}${isAiSessionToday(s.id) ? "" : " · 🔒 보기 전용"}</div>
             </div>`;
             })
             .join("");
@@ -1891,6 +2198,7 @@
           box.appendChild(div);
         });
         box.scrollTop = box.scrollHeight;
+        setAiInputEnabled(isAiSessionToday(session.id));
         renderAiSessionList();
       }
 
@@ -1908,10 +2216,20 @@
         const input = document.getElementById("aiInput");
         const text = input.value.trim();
         if (!text) return;
+        if (!isAiSessionToday(currentAiSessionId)) {
+          appendAiMsg(
+            "system",
+            "지난 날짜의 대화는 보기만 가능합니다. 새 대화를 시작해 주세요.",
+          );
+          return;
+        }
         input.value = "";
 
         if (!loadKb()) {
-          appendAiMsg("system", "📝 지식베이스가 아직 추가되지 않았습니다. 지식베이스를 추가하면 AI가 더 정확하게 답변할 수 있습니다.");
+          appendAiMsg(
+            "system",
+            "📝 지식베이스가 아직 추가되지 않았습니다. 지식베이스를 추가하면 해결이 더욱 빨라집니다.",
+          );
         }
 
         appendAiMsg("user", text);
@@ -1946,7 +2264,7 @@
           thinkingEl.remove();
           appendAiMsg(
             "system",
-            "⚠️ 현재 고객님 AI설정이 안되어있어 사용이 불가능합니다. 고객센터를 통해 문의주시면 처리 도와드리겠습니다.",
+            "⚠️ 현재 고객님 통신상태가 원활하지 않아 사용이 어렵습니다. 고객센터를 통해 문의주시면 빠르게 도와드리겠습니다.",
           );
           aiHistory.pop();
         }
@@ -1994,11 +2312,11 @@
           <div class="chat-top">
             <div class="room-avatar ${isGroup ? "group" : "direct"}" style="width:32px;height:32px;font-size:0.8rem">${isGroup ? "👥" : displayName[0]?.toUpperCase()}</div>
             <div class="chat-top-info">
-              <div class="chat-top-name">${esc(displayName)}</div>
+              <div class="chat-top-name">${room?.is_e2ee ? "🔒 " : ""}${esc(displayName)}</div>
               <div class="chat-top-sub">${memberInfo}</div>
             </div>
             <div class="chat-top-actions">
-              <button class="icon-btn" onclick="toggleSearch()" title="메시지 검색">🔍</button>
+              ${room?.is_e2ee ? `<button class="icon-btn" onclick="alert('암호화된 채팅방에서는 메시지를 검색할 수 없습니다')" title="E2EE 검색 불가">🔍</button>` : `<button class="icon-btn" onclick="toggleSearch()" title="메시지 검색">🔍</button>`}
               <button class="icon-btn" onclick="openRoomSettings(${roomId})" title="채팅방 설정">⚙️</button>
             </div>
           </div>
@@ -2025,19 +2343,28 @@
         const msgEl = document.getElementById("messages");
         let lastDate = "";
 
-        history.forEach((m) => {
+        const roomKey =
+          isGroup && room?.is_e2ee ? await getRoomKey(roomId) : null;
+
+        for (const m of history) {
           if (m.msg_type === "system") {
             msgEl.innerHTML += `<div class="room-notice"><span>${esc(m.content)}</span></div>`;
-            return;
+            continue;
           }
           if (m.reactions) messageReactions.set(m.id, m.reactions);
+          if (m.is_encrypted) {
+            m.content = roomKey
+              ? await decryptMsg(m.content, roomKey)
+              : "🔒 [암호화된 메시지]";
+            m.is_encrypted = false;
+          }
           const d = fmtDate(m.created_at);
           if (d !== lastDate) {
             lastDate = d;
             msgEl.innerHTML += `<div class="date-sep">${d}</div>`;
           }
           msgEl.innerHTML += buildBubble(m);
-        });
+        }
         scrollBottom();
         socket.emit("mark_read", { roomId });
 
@@ -2169,7 +2496,14 @@
               .split(",")
               .map(Number);
             const isMine = uids.includes(me.id);
-            return `<span class="reaction-pill ${isMine ? "mine" : ""}" onclick="selectEmojiDirect(${msgId}, '${r.emoji}')" title="${r.cnt}명 반응">${r.emoji} <span class="r-cnt">${r.cnt}</span></span>`;
+            const names = r.user_names
+              ? r.user_names
+                  .split(",")
+                  .map((n) => n.trim())
+                  .filter(Boolean)
+              : [];
+            const tooltip = names.length ? names.join("\n") : `${r.cnt}명`;
+            return `<span class="reaction-pill ${isMine ? "mine" : ""}" onclick="selectEmojiDirect(${msgId}, '${r.emoji}')" data-tooltip="${esc(tooltip)}">${r.emoji} <span class="r-cnt">${r.cnt}</span></span>`;
           })
           .join("");
         return `<div class="reaction-bar" data-mid="${msgId}">${pills}</div>`;
@@ -2201,13 +2535,14 @@
         }
 
         return `
-          <div class="msg-row ${isMine ? "mine" : "other"}">
+          <div class="msg-row ${isMine ? "mine" : "other"}" data-mid="${m.id || ""}">
             <div class="msg-col">
               ${!isMine ? `<div class="msg-sender">${esc(m.from_name)}</div>` : ""}
               ${content}
               <div class="msg-foot">
                 <span class="msg-time">${fmtTime(m.created_at)}</span>
                 ${isMine ? `<span class="msg-read">${m.is_read ? "읽음" : ""}</span>` : ""}
+                ${isMine && m.id ? `<button onclick="deleteMsg(${m.id})" title="메시지 삭제" style="background:none;border:none;color:#b34;font-size:0.66rem;cursor:pointer;padding:0;margin-left:2px">삭제</button>` : ""}
               </div>
               ${buildReactionBar(m.id, reactions)}
             </div>
@@ -2220,6 +2555,11 @@
         el.innerHTML += buildBubble(m);
       }
 
+      function deleteMsg(messageId) {
+        if (!confirm("이 메시지를 삭제할까요?")) return;
+        socket.emit("delete_message", { messageId });
+      }
+
       function scrollBottom() {
         const el = document.getElementById("messages");
         if (el) el.scrollTop = el.scrollHeight;
@@ -2228,7 +2568,8 @@
       function updateRoomLastMsg(roomId, msg) {
         const room = allRooms.find((r) => r.id == roomId);
         if (room) {
-          room.last_msg = msg.content;
+          room.last_msg =
+            room.is_e2ee && !msg.file_url ? "🔒 암호화된 메시지" : msg.content;
           room.last_file = msg.file_name;
           room.last_at = msg.created_at;
           if (msg.from_id != me.id && roomId != currentRoomId)
@@ -2280,6 +2621,14 @@
           </div>`;
         }
 
+        if (isGroup) {
+          html += `<div class="settings-section">
+            <div class="settings-section-label">초대 링크</div>
+            <div id="inviteLinkArea">
+              <button class="btn-add" onclick="generateInviteLink(${roomId})">초대 링크 생성</button>
+            </div>
+          </div>`;
+        }
         html += `<button class="btn-leave" onclick="leaveRoom(${roomId})">채팅방 나가기</button>`;
 
         document.getElementById("settingsContent").innerHTML = html;
@@ -2288,6 +2637,44 @@
 
       function closeSettingsModal() {
         document.getElementById("settingsModal").classList.remove("open");
+      }
+
+      async function generateInviteLink(roomId) {
+        const area = document.getElementById("inviteLinkArea");
+        if (!area) return;
+        area.innerHTML = `<span style="font-size:0.8rem;color:#94a3b8">생성 중...</span>`;
+        try {
+          const res = await apiFetch(`/api/chat/rooms/${roomId}/invite`, {
+            method: "POST",
+          });
+          const { token } = await res.json();
+          const link = `${window.location.origin}/join.html?invite=${token}`;
+          area.innerHTML = `
+            <div style="display:flex;gap:6px;align-items:center;margin-bottom:4px">
+              <input id="inviteLinkInput" style="flex:1;padding:6px 10px;border:1px solid #e2e8f0;border-radius:8px;font-size:0.78rem;background:#f8fafc" value="${esc(link)}" readonly />
+              <button class="btn-add" onclick="copyInviteLink()">복사</button>
+            </div>
+            <div style="font-size:0.72rem;color:#94a3b8">7일간 유효합니다</div>`;
+        } catch {
+          area.innerHTML = `<span style="font-size:0.8rem;color:#e53935">링크 생성 실패</span>`;
+        }
+      }
+
+      function copyInviteLink() {
+        const input = document.getElementById("inviteLinkInput");
+        if (!input) return;
+        navigator.clipboard
+          .writeText(input.value)
+          .then(() => {
+            const btn = input.nextElementSibling;
+            const orig = btn.textContent;
+            btn.textContent = "복사됨!";
+            setTimeout(() => (btn.textContent = orig), 2000);
+          })
+          .catch(() => {
+            input.select();
+            document.execCommand("copy");
+          });
       }
 
       async function kickMember(roomId, userId) {
@@ -2477,29 +2864,24 @@
             fileName: name,
             fileType: type,
           });
-          appendMsg({
-            from_id: me.id,
-            from_name: me.name,
-            content: content || null,
-            file_url: url,
-            file_name: name,
-            file_type: type,
-            created_at: new Date().toISOString(),
-            is_read: 0,
-            reactions: [],
-          });
           clearFile();
         } else {
           if (!content) return;
-          appendMsg({
-            from_id: me.id,
-            from_name: me.name,
-            content,
-            created_at: new Date().toISOString(),
-            is_read: 0,
-            reactions: [],
+          const room = allRooms.find((r) => r.id == currentRoomId);
+          let sendContent = content;
+          let isEncrypted = 0;
+          if (room?.is_e2ee) {
+            const rk = await getRoomKey(currentRoomId);
+            if (rk) {
+              sendContent = await encryptMsg(content, rk);
+              isEncrypted = 1;
+            }
+          }
+          socket.emit("send_message", {
+            roomId: currentRoomId,
+            content: sendContent,
+            isEncrypted,
           });
-          socket.emit("send_message", { roomId: currentRoomId, content });
         }
 
         scrollBottom();
@@ -2511,6 +2893,8 @@
 
       function openGroupModal() {
         document.getElementById("groupName").value = "";
+        const toggle = document.getElementById("e2eeToggle");
+        if (toggle) toggle.checked = false;
         document
           .querySelectorAll("#memberCheckList input")
           .forEach((c) => (c.checked = false));
@@ -2525,13 +2909,14 @@
         const memberIds = [
           ...document.querySelectorAll("#memberCheckList input:checked"),
         ].map((c) => Number(c.value));
+        const isE2ee = document.getElementById("e2eeToggle")?.checked || false;
         if (!name) return alert("그룹 이름을 입력하세요");
-        if (!memberIds.length) return alert("멤버를 1명 이상 선택하세요");
         const res = await apiFetch("/api/chat/rooms/group", {
           method: "POST",
-          body: JSON.stringify({ name, memberIds }),
+          body: JSON.stringify({ name, memberIds, isE2ee }),
         });
         const { roomId } = await res.json();
+        if (isE2ee) await createRoomKey(roomId, memberIds);
         closeGroupModal();
         await loadData();
         openRoom(roomId);

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>채팅방 참여</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: "Gowun Dodum", sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100dvh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 24px;
+        padding: 44px 36px 36px;
+        width: 100%;
+        max-width: 360px;
+        text-align: center;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.22);
+      }
+      .icon { font-size: 2.8rem; margin-bottom: 16px; }
+      .room-label { font-size: 0.75rem; color: #94a3b8; margin-bottom: 4px; letter-spacing: 0.04em; }
+      .room-name {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 6px;
+        word-break: break-word;
+      }
+      .inviter-info { font-size: 0.85rem; color: #94a3b8; margin-bottom: 28px; }
+      .divider {
+        height: 1px;
+        background: #e2e8f0;
+        margin: 24px 0;
+        position: relative;
+      }
+      .divider span {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: #fff;
+        padding: 0 10px;
+        font-size: 0.75rem;
+        color: #94a3b8;
+      }
+      .section-label { font-size: 0.82rem; color: #475569; margin-bottom: 12px; }
+      input[type="text"] {
+        width: 100%;
+        padding: 13px 16px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        outline: none;
+        margin-bottom: 12px;
+        transition: border-color 0.15s;
+      }
+      input[type="text"]:focus { border-color: #7c3aed; }
+      .btn {
+        width: 100%;
+        padding: 13px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: #fff;
+        border: none;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-family: inherit;
+        cursor: pointer;
+        font-weight: 600;
+        transition: opacity 0.15s;
+      }
+      .btn:hover:not(:disabled) { opacity: 0.88; }
+      .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .logged-name {
+        font-size: 0.95rem;
+        color: #475569;
+        margin-bottom: 14px;
+        padding: 10px 14px;
+        background: #f8fafc;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+      }
+      .logged-name strong { color: #7c3aed; }
+      .error-msg { color: #e53935; font-size: 0.82rem; margin-top: 8px; min-height: 18px; }
+      .invalid-box {
+        padding: 20px;
+        background: #fef2f2;
+        border-radius: 12px;
+        color: #991b1b;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="icon">💬</div>
+      <div class="room-label">채팅방 초대</div>
+      <div class="room-name" id="roomName">로딩 중...</div>
+      <div class="inviter-info" id="inviterInfo"></div>
+
+      <div id="guestSection">
+        <div class="section-label">이름을 입력하면 바로 참여할 수 있습니다</div>
+        <input type="text" id="guestName" placeholder="이름을 입력하세요" maxlength="30" autocomplete="off" />
+        <button class="btn" id="guestBtn" onclick="joinAsGuest()">채팅방 참여하기</button>
+        <div class="error-msg" id="guestError"></div>
+      </div>
+
+      <div id="loggedInSection" style="display:none">
+        <div class="logged-name" id="loggedInName"></div>
+        <button class="btn" id="loggedBtn" onclick="joinAsLoggedIn()">채팅방 참여하기</button>
+        <div class="error-msg" id="loggedError"></div>
+        <div class="divider"><span>또는</span></div>
+        <button class="btn" style="background:#f1f5f9;color:#475569;font-weight:400" onclick="switchToGuest()">다른 이름으로 참여</button>
+      </div>
+
+      <div id="invalidSection" style="display:none">
+        <div class="invalid-box">유효하지 않거나 만료된 초대 링크입니다.</div>
+      </div>
+    </div>
+
+    <script src="/js/config.js"></script>
+    <script>
+      const token = new URLSearchParams(location.search).get("invite");
+
+      async function loadPage() {
+        if (!token) { location.href = "/chat.html"; return; }
+
+        const infoRes = await fetch(`${SERVER_URL}/api/chat/invite/${token}`);
+        if (!infoRes.ok) {
+          document.getElementById("roomName").textContent = "초대 링크 오류";
+          document.getElementById("guestSection").style.display = "none";
+          document.getElementById("invalidSection").style.display = "block";
+          return;
+        }
+        const { roomName, inviterName } = await infoRes.json();
+        document.getElementById("roomName").textContent = roomName || "채팅방";
+        document.getElementById("inviterInfo").textContent = `${inviterName}님이 초대했습니다`;
+
+        const meRes = await fetch(`${SERVER_URL}/auth/me`, { credentials: "include" });
+        if (meRes.ok) {
+          const me = await meRes.json();
+          document.getElementById("guestSection").style.display = "none";
+          document.getElementById("loggedInSection").style.display = "block";
+          document.getElementById("loggedInName").innerHTML =
+            `<strong>${me.name || me.email}</strong> 으로 참여합니다`;
+        } else {
+          document.getElementById("guestName").focus();
+        }
+      }
+
+      function switchToGuest() {
+        document.getElementById("loggedInSection").style.display = "none";
+        document.getElementById("guestSection").style.display = "block";
+        document.getElementById("guestName").focus();
+      }
+
+      async function joinAsGuest() {
+        const name = document.getElementById("guestName").value.trim();
+        const errEl = document.getElementById("guestError");
+        if (!name) { errEl.textContent = "이름을 입력하세요"; return; }
+        errEl.textContent = "";
+
+        const btn = document.getElementById("guestBtn");
+        btn.disabled = true;
+        btn.textContent = "참여 중...";
+
+        try {
+          const res = await fetch(`${SERVER_URL}/api/chat/invite/${token}/guest-join`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ guestName: name }),
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errEl.textContent = data.error || "참여 실패";
+            btn.disabled = false;
+            btn.textContent = "채팅방 참여하기";
+            return;
+          }
+          location.href = `/chat.html?room=${data.roomId}`;
+        } catch {
+          errEl.textContent = "서버 오류가 발생했습니다";
+          btn.disabled = false;
+          btn.textContent = "채팅방 참여하기";
+        }
+      }
+
+      async function joinAsLoggedIn() {
+        const errEl = document.getElementById("loggedError");
+        errEl.textContent = "";
+        const btn = document.getElementById("loggedBtn");
+        btn.disabled = true;
+        btn.textContent = "참여 중...";
+
+        try {
+          const res = await fetch(`${SERVER_URL}/api/chat/invite/${token}/join`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          });
+          const data = await res.json();
+          if (!res.ok) {
+            errEl.textContent = data.error || "참여 실패";
+            btn.disabled = false;
+            btn.textContent = "채팅방 참여하기";
+            return;
+          }
+          location.href = `/chat.html?room=${data.roomId}`;
+        } catch {
+          errEl.textContent = "서버 오류가 발생했습니다";
+          btn.disabled = false;
+          btn.textContent = "채팅방 참여하기";
+        }
+      }
+
+      document.getElementById("guestName").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") joinAsGuest();
+      });
+
+      loadPage();
+    </script>
+  </body>
+</html>

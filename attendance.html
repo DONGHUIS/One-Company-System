@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>출퇴근 관리</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: "Gowun Dodum", sans-serif; background: #f1f5f9; min-height: 100vh; color: #1e293b; }
+
+      .top-bar {
+        background: linear-gradient(135deg, #4f46e5, #7c3aed);
+        color: #fff;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      }
+      .top-bar a { color: #fff; text-decoration: none; font-size: 1.2rem; }
+      .top-bar h1 { font-size: 1rem; flex: 1; }
+      .user-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 4px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+      }
+
+      .container { max-width: 940px; margin: 28px auto; padding: 0 16px 60px; }
+
+      .card {
+        background: #fff;
+        border-radius: 14px;
+        padding: 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+        margin-bottom: 20px;
+      }
+      .card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        margin-bottom: 18px;
+        color: #4f46e5;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .ip-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        font-weight: 600;
+      }
+      .ip-badge.office { background: #d1fae5; color: #065f46; }
+      .ip-badge.external { background: #fef3c7; color: #92400e; }
+      .ip-badge.loading { background: #e2e8f0; color: #64748b; }
+
+      .info-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+
+      .status-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 12px;
+        margin: 16px 0;
+      }
+      .status-item {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 14px;
+        text-align: center;
+      }
+      .status-item .label { font-size: 0.78rem; color: #64748b; margin-bottom: 4px; }
+      .status-item .value { font-size: 1.2rem; font-weight: 700; color: #1e293b; }
+
+      .btn-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+      .btn {
+        padding: 12px 28px;
+        border: none;
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .btn:disabled { opacity: 0.38; cursor: not-allowed; }
+      .btn-in  { background: #4f46e5; color: #fff; }
+      .btn-in:not(:disabled):hover  { background: #4338ca; }
+      .btn-out { background: #7c3aed; color: #fff; }
+      .btn-out:not(:disabled):hover { background: #6d28d9; }
+      .btn-sm  { padding: 6px 14px; font-size: 0.85rem; border-radius: 8px; }
+      .btn-approve { background: #059669; color: #fff; }
+      .btn-approve:hover { background: #047857; }
+      .btn-reject  { background: #dc2626; color: #fff; }
+      .btn-reject:hover  { background: #b91c1c; }
+      .btn-danger  { background: #dc2626; color: #fff; }
+      .btn-danger:hover  { background: #b91c1c; }
+      .btn-primary { background: #4f46e5; color: #fff; }
+      .btn-primary:hover { background: #4338ca; }
+
+      .tabs { display: flex; gap: 4px; margin-bottom: 18px; flex-wrap: wrap; }
+      .tab-btn {
+        padding: 8px 18px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        background: #fff;
+        font-family: inherit;
+        font-size: 0.9rem;
+        cursor: pointer;
+        color: #64748b;
+        font-weight: 600;
+        transition: all 0.2s;
+      }
+      .tab-btn.active { border-color: #4f46e5; color: #4f46e5; background: #eef2ff; }
+      .tab-btn .badge {
+        display: inline-block;
+        background: #dc2626;
+        color: #fff;
+        border-radius: 10px;
+        padding: 0 7px;
+        font-size: 0.75rem;
+        margin-left: 4px;
+        vertical-align: middle;
+      }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+
+      .tbl-wrap { overflow-x: auto; }
+      table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+      th { background: #f8fafc; color: #64748b; font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+      td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+      tr:last-child td { border-bottom: none; }
+      tr:hover td { background: #f8fafc; }
+
+      .chip {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.78rem;
+        font-weight: 600;
+      }
+      .chip-in       { background: #dbeafe; color: #1d4ed8; }
+      .chip-out      { background: #fce7f3; color: #9d174d; }
+      .chip-normal   { background: #d1fae5; color: #065f46; }
+      .chip-pending  { background: #fef3c7; color: #92400e; }
+      .chip-approved { background: #d1fae5; color: #065f46; }
+      .chip-rejected { background: #fee2e2; color: #991b1b; }
+
+      .ip-form { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+      .ip-form input {
+        padding: 8px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.9rem;
+        flex: 1;
+        min-width: 140px;
+      }
+      .ip-form input:focus { outline: none; border-color: #4f46e5; }
+
+      .filter-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+      .filter-row input, .filter-row select {
+        padding: 7px 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.9rem;
+      }
+      .filter-row input:focus, .filter-row select:focus { outline: none; border-color: #4f46e5; }
+
+      .section-label { font-size: 0.82rem; color: #94a3b8; margin-bottom: 12px; }
+      .empty { text-align: center; color: #94a3b8; padding: 28px; }
+    </style>
+  </head>
+  <body>
+
+    <div class="top-bar">
+      <a href="/">← 홈</a>
+      <h1>🕐 출퇴근 관리</h1>
+      <span class="user-badge" id="userBadge">로딩중...</span>
+    </div>
+
+    <div class="container">
+
+      <!-- 오늘 현황 -->
+      <div class="card">
+        <div class="card-title">📋 오늘 현황</div>
+        <div class="info-row">
+          <span id="ipBadge" class="ip-badge loading">IP 확인중...</span>
+          <span id="todayDate" style="color:#64748b; font-size:0.9rem;"></span>
+        </div>
+        <div class="status-grid">
+          <div class="status-item">
+            <div class="label">출근 시각</div>
+            <div class="value" id="clockInTime">-</div>
+          </div>
+          <div class="status-item">
+            <div class="label">퇴근 시각</div>
+            <div class="value" id="clockOutTime">-</div>
+          </div>
+          <div class="status-item">
+            <div class="label">근무 시간</div>
+            <div class="value" id="workHours">-</div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-in"  id="btnIn"  onclick="doClock('in')"  disabled>출근하기</button>
+          <button class="btn btn-out" id="btnOut" onclick="doClock('out')" disabled>퇴근하기</button>
+        </div>
+      </div>
+
+      <!-- 내 기록 -->
+      <div class="card">
+        <div class="card-title">📅 내 출퇴근 기록</div>
+        <div class="filter-row">
+          <input type="date" id="myRecordDate" onchange="loadMyRecords()" />
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>구분</th><th>시각</th><th>IP</th><th>위치</th><th>상태</th><th>사유</th></tr>
+            </thead>
+            <tbody id="myRecordsTbody">
+              <tr><td colspan="6" class="empty">로딩중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 관리자 패널 -->
+      <div class="card" id="adminPanel" style="display:none;">
+        <div class="card-title">🔧 관리자 패널</div>
+        <div class="tabs">
+          <button class="tab-btn active" id="tabBtnRequests" onclick="showAdminTab('requests')">
+            결재 관리 <span class="badge" id="pendingBadge" style="display:none">0</span>
+          </button>
+          <button class="tab-btn" id="tabBtnIps"        onclick="showAdminTab('ips')">IP 관리</button>
+          <button class="tab-btn" id="tabBtnAllRecords" onclick="showAdminTab('allRecords')">전체 기록</button>
+        </div>
+
+        <!-- 결재 관리 탭 -->
+        <div class="tab-content active" id="tabRequests">
+          <div class="filter-row">
+            <select id="reqStatusFilter" onchange="loadRequests()">
+              <option value="">전체</option>
+              <option value="pending" selected>대기중</option>
+              <option value="approved">승인됨</option>
+              <option value="rejected">반려됨</option>
+            </select>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr><th>사원</th><th>구분</th><th>사유</th><th>신청시각</th><th>IP</th><th>상태</th><th>처리자</th><th>처리</th></tr>
+              </thead>
+              <tbody id="requestsTbody">
+                <tr><td colspan="8" class="empty">로딩중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- IP 관리 탭 -->
+        <div class="tab-content" id="tabIps">
+          <div class="section-label">현재 내 접속 IP: <strong id="myCurrentIp">-</strong></div>
+          <div class="ip-form">
+            <input type="text" id="newIpAddress" placeholder="IP 주소 (예: 1.2.3.4)" />
+            <input type="text" id="newIpDesc"    placeholder="설명 (예: 본사 사무실)" />
+            <button class="btn btn-primary btn-sm" onclick="addIp()" style="white-space:nowrap;">+ IP 추가</button>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr><th>IP 주소</th><th>설명</th><th>등록자</th><th>등록일</th><th>상태</th><th></th></tr>
+              </thead>
+              <tbody id="ipsTbody">
+                <tr><td colspan="5" class="empty">로딩중...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 전체 기록 탭 -->
+        <div class="tab-content" id="tabAllRecords">
+          <div class="filter-row">
+            <select id="allRecordsUser" onchange="loadAllRecords()">
+              <option value="">전체 직원</option>
+            </select>
+            <input type="date" id="allRecordsDate" />
+            <button class="btn btn-primary btn-sm" onclick="loadAllRecords()">조회</button>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead>
+                <tr><th>사원</th><th>구분</th><th>시각</th><th>IP</th><th>위치</th><th>상태</th><th>사유</th></tr>
+              </thead>
+              <tbody id="allRecordsTbody">
+                <tr><td colspan="7" class="empty">날짜를 선택하고 조회하세요</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /container -->
+
+    <script>
+      let meInfo = null;
+      let todayRecords = [];
+      let isOfficeNetwork = false;
+      let workTimer = null;
+
+      function esc(s) {
+        return String(s ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+      }
+
+      function formatTime(dt) {
+        if (!dt) return "-";
+        return new Date(dt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function formatDateTime(dt) {
+        if (!dt) return "-";
+        const d = new Date(dt);
+        return `${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getDate()).padStart(2,"0")} `
+          + `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;
+      }
+
+      function calcWorkMs(records) {
+        let total = 0;
+        let lastIn = null;
+        for (const r of records) {
+          if (r.type === "in")  { lastIn = new Date(r.clock_time); }
+          else if (r.type === "out" && lastIn) {
+            total += new Date(r.clock_time) - lastIn;
+            lastIn = null;
+          }
+        }
+        if (lastIn) total += Date.now() - lastIn;
+        return total;
+      }
+
+      function formatWorkMs(ms) {
+        if (ms <= 0) return "-";
+        const h = Math.floor(ms / 3600000);
+        const m = Math.floor((ms % 3600000) / 60000);
+        return `${h}시간 ${m}분`;
+      }
+
+      function updateWorkTimer() {
+        const ms = calcWorkMs(todayRecords);
+        document.getElementById("workHours").textContent = formatWorkMs(ms);
+      }
+
+      function renderTodayStatus() {
+        clearInterval(workTimer);
+
+        const inRecords  = todayRecords.filter(r => r.type === "in");
+        const outRecords = todayRecords.filter(r => r.type === "out");
+
+        document.getElementById("clockInTime").textContent =
+          inRecords.length ? formatTime(inRecords[0].clock_time) : "-";
+        document.getElementById("clockOutTime").textContent =
+          outRecords.length ? formatTime(outRecords[outRecords.length - 1].clock_time) : "-";
+
+        if (todayRecords.length) {
+          updateWorkTimer();
+          workTimer = setInterval(updateWorkTimer, 60000);
+        } else {
+          document.getElementById("workHours").textContent = "-";
+        }
+
+        const lastType = todayRecords.length ? todayRecords[todayRecords.length - 1].type : null;
+        document.getElementById("btnIn").disabled  = lastType === "in";
+        document.getElementById("btnOut").disabled = lastType !== "in";
+      }
+
+      async function loadToday() {
+        const res  = await fetch("/api/attendance/today", { credentials: "include" });
+        const data = await res.json();
+        todayRecords    = data.records || [];
+        isOfficeNetwork = data.isOffice;
+
+        const badge = document.getElementById("ipBadge");
+        badge.textContent = `📍 ${data.clientIp} · ${isOfficeNetwork ? "사무실" : "외부"}`;
+        badge.className   = `ip-badge ${isOfficeNetwork ? "office" : "external"}`;
+
+        document.getElementById("myCurrentIp").textContent = data.clientIp;
+        renderTodayStatus();
+      }
+
+      async function doClock(type) {
+        const label = type === "in" ? "출근" : "퇴근";
+
+        if (!isOfficeNetwork) {
+          const { value: reason, isConfirmed } = await Swal.fire({
+            title: `외부 IP에서 ${label}`,
+            html: `<p style="margin-bottom:10px;color:#92400e;font-size:0.9rem;">
+              사무실 외 위치에서의 ${label}은 사유 등록이 필요합니다.<br>
+              관리자 확인 후 처리되며, 기록은 즉시 저장됩니다.
+            </p>`,
+            input: "textarea",
+            inputLabel: "사유를 입력하세요",
+            inputPlaceholder: "재택근무, 외근, 출장 등 사유를 상세히 입력해주세요",
+            inputAttributes: { rows: 3 },
+            showCancelButton: true,
+            confirmButtonText: "신청하기",
+            cancelButtonText: "취소",
+            confirmButtonColor: "#4f46e5",
+            inputValidator: v => !v?.trim() && "사유를 입력해주세요",
+          });
+          if (!isConfirmed) return;
+
+          const r = await fetch("/api/attendance/clock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ type, reason }),
+          });
+          const d = await r.json();
+          if (!r.ok) return Swal.fire("오류", d.error || "처리 실패", "error");
+
+          Swal.fire({
+            icon: "success",
+            title: `${label} 신청 완료`,
+            text: "관리자 승인 후 확인됩니다. 기록은 임시 저장되었습니다.",
+            timer: 2800,
+            showConfirmButton: false,
+          });
+        } else {
+          const r = await fetch("/api/attendance/clock", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ type }),
+          });
+          const d = await r.json();
+          if (!r.ok) return Swal.fire("오류", d.error || "처리 실패", "error");
+
+          Swal.fire({
+            icon: "success",
+            title: `${label} 완료`,
+            text: formatTime(new Date()),
+            timer: 1600,
+            showConfirmButton: false,
+          });
+        }
+
+        await loadToday();
+        await loadMyRecords();
+      }
+
+      async function loadMyRecords() {
+        const date = document.getElementById("myRecordDate").value;
+        const url  = date ? `/api/attendance/records?date=${date}` : "/api/attendance/records";
+        const res  = await fetch(url, { credentials: "include" });
+        const rows = await res.json();
+        const tbody = document.getElementById("myRecordsTbody");
+
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty">기록이 없습니다</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => `
+          <tr>
+            <td><span class="chip chip-${r.type}">${r.type === "in" ? "출근" : "퇴근"}</span></td>
+            <td>${esc(formatDateTime(r.clock_time))}</td>
+            <td style="font-size:0.82rem;color:#64748b;">${esc(r.ip_address)}</td>
+            <td>${r.status === "normal"
+              ? '<span style="color:#059669">🏢 사무실</span>'
+              : '<span style="color:#d97706">🏠 외부</span>'}</td>
+            <td><span class="chip chip-${r.status}">${statusLabel(r.status)}</span></td>
+            <td style="font-size:0.82rem;color:#64748b;">${esc(r.reason || "")}</td>
+          </tr>
+        `).join("");
+      }
+
+      function statusLabel(s) {
+        return { normal: "정상", pending: "대기중", approved: "승인", rejected: "반려" }[s] ?? s;
+      }
+
+      // ── 관리자 ──
+
+      function showAdminTab(name) {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".tab-content").forEach(c => c.classList.remove("active"));
+        const cap = name.charAt(0).toUpperCase() + name.slice(1);
+        document.getElementById(`tabBtn${cap}`).classList.add("active");
+        document.getElementById(`tab${cap}`).classList.add("active");
+        if (name === "requests")   loadRequests();
+        else if (name === "ips")   loadIps();
+        else if (name === "allRecords") loadAllRecords();
+      }
+
+      async function loadRequests() {
+        const status = document.getElementById("reqStatusFilter").value;
+        const url = status ? `/api/attendance/requests?status=${status}` : "/api/attendance/requests";
+        const res = await fetch(url, { credentials: "include" });
+        const rows = await res.json();
+
+        const pending = rows.filter(r => r.status === "pending").length;
+        const badge   = document.getElementById("pendingBadge");
+        badge.textContent  = pending;
+        badge.style.display = pending ? "" : "none";
+
+        const tbody = document.getElementById("requestsTbody");
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="8" class="empty">내역이 없습니다</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => `
+          <tr>
+            <td>
+              ${esc(r.user_name)}
+              <br><span style="font-size:0.78rem;color:#94a3b8">${esc(r.user_email)}</span>
+            </td>
+            <td><span class="chip chip-${r.type}">${r.type === "in" ? "출근" : "퇴근"}</span></td>
+            <td style="max-width:180px;word-break:break-all;">${esc(r.reason)}</td>
+            <td style="font-size:0.85rem;white-space:nowrap;">${esc(formatDateTime(r.created_at))}</td>
+            <td style="font-size:0.82rem;color:#64748b;">${esc(r.record_ip || "-")}</td>
+            <td><span class="chip chip-${r.status}">${statusLabel(r.status)}</span></td>
+            <td style="font-size:0.85rem;">${esc(r.approver_name || "-")}</td>
+            <td>
+              ${r.status === "pending" ? `
+                <div style="display:flex;gap:6px;">
+                  <button class="btn btn-sm btn-approve" onclick="handleRequest(${r.id},'approved')">승인</button>
+                  <button class="btn btn-sm btn-reject"  onclick="handleRequest(${r.id},'rejected')">반려</button>
+                </div>
+              ` : "-"}
+            </td>
+          </tr>
+        `).join("");
+      }
+
+      async function handleRequest(id, status) {
+        const label = status === "approved" ? "승인" : "반려";
+        const { isConfirmed } = await Swal.fire({
+          title: `${label}하시겠습니까?`,
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: label,
+          cancelButtonText: "취소",
+          confirmButtonColor: status === "approved" ? "#059669" : "#dc2626",
+        });
+        if (!isConfirmed) return;
+
+        const res = await fetch(`/api/attendance/requests/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ status }),
+        });
+        const d = await res.json();
+        if (!res.ok) return Swal.fire("오류", d.error, "error");
+        Swal.fire({ icon: "success", title: `${label} 완료`, timer: 1200, showConfirmButton: false });
+        loadRequests();
+      }
+
+      async function loadIps() {
+        const tbody = document.getElementById("ipsTbody");
+        try {
+          const res  = await fetch("/api/attendance/allowed-ips", { credentials: "include" });
+          const rows = await res.json();
+
+          if (!Array.isArray(rows) || !rows.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="empty">등록된 IP가 없습니다</td></tr>';
+            return;
+          }
+          tbody.innerHTML = rows.map(r => {
+            const deleted = !!r.deleted_at;
+            return `
+            <tr>
+              <td style="font-weight:600;${deleted ? "text-decoration:line-through;color:#94a3b8;" : ""}">${esc(r.ip_address)}</td>
+              <td style="color:#64748b;">${esc(r.description || "-")}</td>
+              <td>${esc(r.creator_name)}</td>
+              <td style="font-size:0.85rem;color:#64748b;">${esc(formatDateTime(r.created_at))}</td>
+              <td>${deleted
+                ? `<span style="font-size:0.82rem;color:#dc2626;">비활성화<br>${esc(formatDateTime(r.deleted_at))}</span>`
+                : `<span style="font-size:0.82rem;color:#059669;">활성</span>`
+              }</td>
+              <td>
+                ${deleted
+                  ? `<button class="btn btn-sm btn-primary" onclick="restoreIp(${r.id})">복구</button>`
+                  : `<button class="btn btn-sm btn-danger" onclick="deleteIp(${r.id})">비활성화</button>`
+                }
+              </td>
+            </tr>
+          `}).join("");
+        } catch (e) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty">불러오기 실패</td></tr>';
+        }
+      }
+
+      async function addIp() {
+        const ip   = document.getElementById("newIpAddress").value.trim();
+        const desc = document.getElementById("newIpDesc").value.trim();
+        if (!ip) return Swal.fire("", "IP 주소를 입력하세요", "warning");
+
+        const res = await fetch("/api/attendance/allowed-ips", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ ip_address: ip, description: desc }),
+        });
+        const d = await res.json();
+        if (!res.ok) return Swal.fire("오류", d.error, "error");
+
+        document.getElementById("newIpAddress").value = "";
+        document.getElementById("newIpDesc").value    = "";
+        Swal.fire({ icon: "success", title: "IP 추가 완료", timer: 1200, showConfirmButton: false });
+        loadIps();
+      }
+
+      async function deleteIp(id) {
+        const { isConfirmed } = await Swal.fire({
+          title: "비활성화하시겠습니까?",
+          text: "이 IP는 출퇴근에 사용할 수 없게 됩니다. 히스토리는 유지됩니다.",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonColor: "#dc2626",
+          confirmButtonText: "비활성화",
+          cancelButtonText: "취소",
+        });
+        if (!isConfirmed) return;
+        const r = await fetch(`/api/attendance/allowed-ips/${id}`, { method: "DELETE", credentials: "include" });
+        if (!r.ok) return Swal.fire("오류", "비활성화 처리 실패", "error");
+        await loadIps();
+      }
+
+      async function restoreIp(id) {
+        const { isConfirmed } = await Swal.fire({
+          title: "복구하시겠습니까?",
+          text: "이 IP를 다시 사무실 IP로 활성화합니다.",
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonColor: "#059669",
+          confirmButtonText: "복구",
+          cancelButtonText: "취소",
+        });
+        if (!isConfirmed) return;
+        const r = await fetch(`/api/attendance/allowed-ips/${id}/restore`, { method: "POST", credentials: "include" });
+        if (!r.ok) return Swal.fire("오류", "복구 처리 실패", "error");
+        await loadIps();
+      }
+
+      async function loadUsers() {
+        const sel = document.getElementById("allRecordsUser");
+        try {
+          const res   = await fetch("/api/attendance/users", { credentials: "include" });
+          const users = await res.json();
+          sel.innerHTML = '<option value="">전체 직원</option>'
+            + users.map(u => `<option value="${u.id}">${esc(u.name || u.email)}</option>`).join("");
+        } catch (e) {
+          console.error("직원 목록 로드 실패:", e);
+        }
+      }
+
+      async function loadAllRecords() {
+        const date   = document.getElementById("allRecordsDate").value;
+        const userId = document.getElementById("allRecordsUser").value;
+        const params = new URLSearchParams();
+        if (date)   params.set("date", date);
+        if (userId) params.set("userId", userId);
+        const url  = `/api/attendance/records?${params}`;
+        const res  = await fetch(url, { credentials: "include" });
+        const rows = await res.json();
+        const tbody = document.getElementById("allRecordsTbody");
+
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="7" class="empty">기록이 없습니다</td></tr>';
+          return;
+        }
+        tbody.innerHTML = rows.map(r => `
+          <tr>
+            <td>${esc(r.user_name)}</td>
+            <td><span class="chip chip-${r.type}">${r.type === "in" ? "출근" : "퇴근"}</span></td>
+            <td style="white-space:nowrap;">${esc(formatDateTime(r.clock_time))}</td>
+            <td style="font-size:0.82rem;color:#64748b;">${esc(r.ip_address)}</td>
+            <td>${r.status === "normal"
+              ? '<span style="color:#059669">🏢 사무실</span>'
+              : '<span style="color:#d97706">🏠 외부</span>'}</td>
+            <td><span class="chip chip-${r.status}">${statusLabel(r.status)}</span></td>
+            <td style="font-size:0.82rem;color:#64748b;">${esc(r.reason || "")}</td>
+          </tr>
+        `).join("");
+      }
+
+      async function init() {
+        const now  = new Date();
+        const days = ["일","월","화","수","목","금","토"];
+        document.getElementById("todayDate").textContent =
+          `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]})`;
+
+        const today = now.toISOString().slice(0, 10);
+        document.getElementById("myRecordDate").value   = today;
+        document.getElementById("allRecordsDate").value = today;
+
+        const meRes = await fetch("/auth/me", { credentials: "include" });
+        if (!meRes.ok) { location.href = "/login.html"; return; }
+        meInfo = await meRes.json();
+        document.getElementById("userBadge").textContent = meInfo.name || meInfo.email;
+
+        if (meInfo.role === "admin") {
+          document.getElementById("adminPanel").style.display = "";
+          loadRequests();
+          loadIps();
+          loadUsers();
+        }
+
+        await loadToday();
+        await loadMyRecords();
+      }
+
+      init();
+    </script>
+  </body>
+</html>

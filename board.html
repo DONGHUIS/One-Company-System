@@ -178,6 +178,10 @@
         font-weight: 700;
         flex-shrink: 0;
       }
+      .role-badge.ceo {
+        background: #fef3c7;
+        color: #92400e;
+      }
       .role-badge.admin {
         background: #ede9fe;
         color: #7c3aed;
@@ -461,7 +465,7 @@
       async function init() {
         me = await checkAuth();
         if (!me) return;
-        if (me.role === "admin") {
+        if (["admin", "ceo"].includes(me.role)) {
           document.getElementById("btnWrite").style.display = "block";
           document.getElementById("adminPanel").style.display = "block";
           loadUsers();
@@ -515,7 +519,7 @@
         document.getElementById("detailContent").textContent = post.content;
 
         const footer = document.getElementById("detailFooter");
-        if (me.role === "admin") {
+        if (["admin", "ceo"].includes(me.role)) {
           footer.innerHTML = `
             <button class="btn-delete" onclick="deletePost(${post.id})">삭제</button>
             <button class="btn-edit" onclick="openEditModal(${post.id}, \`${esc(post.title)}\`, \`${esc(post.content)}\`)">수정</button>
@@ -574,24 +578,44 @@
         loadPosts();
       }
 
+      function roleLabel(role) {
+        return role === "ceo" ? "대표이사" : role === "admin" ? "관리자" : "일반";
+      }
+
       async function loadUsers() {
         const res = await apiFetch("/api/board/users");
         const users = await res.json();
         document.getElementById("userList").innerHTML = users
-          .map(
-            (u) => `
-          <div class="user-row">
-            <div class="user-info">
-              <div class="user-name">${esc(u.name || u.email)}</div>
-              <div class="user-email">${esc(u.email)}</div>
-            </div>
-            <span class="role-badge ${u.role}">${u.role === "admin" ? "관리자" : "일반"}</span>
-            <button class="btn-role ${u.id === me.id ? "me" : ""}"
-              onclick="changeRole(${u.id}, '${u.role === "admin" ? "user" : "admin"}', this)">
-              ${u.role === "admin" ? "일반으로 변경" : "관리자로 변경"}
-            </button>
-          </div>`,
-          )
+          .map((u) => {
+            const isSelf = u.id === me.id;
+            let btns = "";
+            if (!isSelf) {
+              if (me.role === "ceo") {
+                if (u.role === "ceo") {
+                  btns += `<button class="btn-role" onclick="changeRole(${u.id},'admin',this)">관리자로 변경</button>`;
+                } else if (u.role === "admin") {
+                  btns += `<button class="btn-role" onclick="changeRole(${u.id},'ceo',this)">대표이사로 변경</button>`;
+                  btns += `<button class="btn-role" onclick="changeRole(${u.id},'user',this)">일반으로 변경</button>`;
+                } else {
+                  btns += `<button class="btn-role" onclick="changeRole(${u.id},'admin',this)">관리자로 변경</button>`;
+                }
+              } else if (me.role === "admin") {
+                if (u.role !== "ceo") {
+                  btns += `<button class="btn-role" onclick="changeRole(${u.id},'${u.role === "admin" ? "user" : "admin"}',this)">
+                    ${u.role === "admin" ? "일반으로 변경" : "관리자로 변경"}</button>`;
+                }
+              }
+            }
+            return `
+              <div class="user-row">
+                <div class="user-info">
+                  <div class="user-name">${esc(u.name || u.email)}${isSelf ? " (나)" : ""}</div>
+                  <div class="user-email">${esc(u.email)}</div>
+                </div>
+                <span class="role-badge ${u.role}">${roleLabel(u.role)}</span>
+                ${btns}
+              </div>`;
+          })
           .join("");
       }
 

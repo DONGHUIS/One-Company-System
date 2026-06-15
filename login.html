@@ -343,6 +343,12 @@
         hideMessages();
       }
 
+      // Google OAuth 실패 시 URL 파라미터로 에러 표시
+      const urlError = new URLSearchParams(location.search).get("error");
+      if (urlError === "domain_blocked") {
+        setTimeout(() => showError("허용되지 않은 이메일 도메인입니다. 회사 계정으로 로그인해 주세요."), 0);
+      }
+
       function showError(msg) {
         const el = document.getElementById("loginError");
         el.textContent = msg;

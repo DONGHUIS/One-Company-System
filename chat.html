@@ -2333,7 +2333,7 @@
             <label class="attach-btn" title="파일 첨부">
               📎<input type="file" id="fileInput" style="display:none" onchange="onFileSelect(this)" />
             </label>
-            <textarea class="chat-input" id="chatInput" rows="1" placeholder="메시지를 입력하세요.(Ctrl+Enter 전송)" onkeydown="handleKey(event)"></textarea>
+            <textarea class="chat-input" id="chatInput" rows="1" placeholder="메시지를 입력하세요.(Shift+Enter 줄바꿈)" onkeydown="handleKey(event)"></textarea>
             <button class="send-btn" onclick="sendMsg()">➤</button>
           </div>`;
 
@@ -2822,7 +2822,7 @@
             }
           }
         }
-        if (e.key === "Enter" && e.ctrlKey) {
+        if (e.key === "Enter" && !e.shiftKey) {
           e.preventDefault();
           sendMsg();
         }

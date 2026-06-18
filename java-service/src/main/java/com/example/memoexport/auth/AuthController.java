@@ -1,6 +1,8 @@
 package com.example.memoexport.auth;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -10,6 +12,8 @@ import java.util.Map;
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final UserService userService;
     private final JwtUtil jwtUtil;
@@ -29,11 +33,15 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("error", "이메일과 비밀번호를 입력하세요"));
 
         Map<String, Object> user = userService.findByEmail(email);
-        if (user == null || user.get("password") == null)
+        if (user == null || user.get("password") == null) {
+            log.warn("로그인 실패 - 이메일 없음: {}", maskEmail(email));
             return ResponseEntity.status(401).body(Map.of("error", "이메일 또는 비밀번호가 올바르지 않습니다"));
+        }
 
-        if (!userService.verifyPassword(password, (String) user.get("password")))
+        if (!userService.verifyPassword(password, (String) user.get("password"))) {
+            log.warn("로그인 실패 - 비밀번호 불일치: {}", maskEmail(email));
             return ResponseEntity.status(401).body(Map.of("error", "이메일 또는 비밀번호가 올바르지 않습니다"));
+        }
 
         long   userId = ((Number) user.get("id")).longValue();
         String role   = user.get("role") != null ? (String) user.get("role") : "user";
@@ -41,6 +49,7 @@ public class AuthController {
 
         setAuthCookie(response, token);
         userService.writeLog(userId, "login");
+        log.info("로그인 성공: {} (userId={})", maskEmail(email), userId);
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -58,18 +67,24 @@ public class AuthController {
         if (!password.matches(".*[A-Za-z].*") || !password.matches(".*[0-9].*"))
             return ResponseEntity.badRequest().body(Map.of("error", "비밀번호는 영문자와 숫자를 포함해야 합니다"));
 
-        if (userService.emailExists(email))
+        if (userService.emailExists(email)) {
+            log.warn("회원가입 실패 - 이메일 중복: {}", maskEmail(email));
             return ResponseEntity.status(409).body(Map.of("error", "이미 사용 중인 이메일입니다"));
+        }
 
         long userId = userService.createUser(email, name, password);
         userService.writeLog(userId, "register");
+        log.info("회원가입 완료: {} (userId={})", maskEmail(email), userId);
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
     // ── 로그아웃 ──
     @PostMapping("/logout")
     public ResponseEntity<?> logout(@AuthenticationPrincipal AuthUser user, HttpServletResponse response) {
-        if (user != null) userService.writeLog(user.id(), "logout");
+        if (user != null) {
+            userService.writeLog(user.id(), "logout");
+            log.info("로그아웃: {} (userId={})", maskEmail(user.email()), user.id());
+        }
         clearAuthCookie(response);
         return ResponseEntity.ok(Map.of("ok", true));
     }
@@ -114,6 +129,7 @@ public class AuthController {
             return ResponseEntity.status(401).body(Map.of("error", "현재 비밀번호가 올바르지 않습니다"));
 
         userService.changePassword(user.id(), newPassword);
+        log.info("비밀번호 변경: {} (userId={})", maskEmail(user.email()), user.id());
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -123,10 +139,18 @@ public class AuthController {
         if (user == null)
             return ResponseEntity.status(401).body(Map.of("error", "미로그인"));
 
+        log.info("회원 탈퇴: {} (userId={})", maskEmail(user.email()), user.id());
         userService.writeLog(user.id(), "withdraw");
         userService.deleteUser(user.id());
         clearAuthCookie(response);
         return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    private String maskEmail(String email) {
+        if (email == null) return "unknown";
+        int at = email.indexOf('@');
+        if (at <= 0) return "***";
+        return "*".repeat(at) + email.substring(at);
     }
 
     private void setAuthCookie(HttpServletResponse response, String token) {

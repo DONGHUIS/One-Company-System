@@ -4,14 +4,17 @@ const GEMINI_API_KEY = ""; // 본인 Gemini API 키를 여기에 입력
 const GEMINI_MODEL = "gemini-2.0-flash-lite";
 const CHAT_STORAGE_KEY = "gemini_chat_sessions";
 
-let chatHistory = [];       // 현재 세션 API용 배열
-let chatMessages = [];      // 현재 세션 렌더용 배열 [{role, text}]
+let chatHistory = []; // 현재 세션 API용 배열
+let chatMessages = []; // 현재 세션 렌더용 배열 [{role, text}]
 let currentSessionId = null;
 
 // ── 세션 저장/불러오기 ──
 function loadChatSessions() {
-  try { return JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY)) || []; }
-  catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
 }
 
 function saveChatSessions(sessions) {
@@ -20,11 +23,12 @@ function saveChatSessions(sessions) {
 
 function saveCurrentSession() {
   // 유저 메시지가 1개 이상일 때만 저장
-  const userMsgs = chatMessages.filter(m => m.role === "user");
+  const userMsgs = chatMessages.filter((m) => m.role === "user");
   if (userMsgs.length === 0) return;
 
   const sessions = loadChatSessions();
-  const title = userMsgs[0].text.slice(0, 30) + (userMsgs[0].text.length > 30 ? "…" : "");
+  const title =
+    userMsgs[0].text.slice(0, 30) + (userMsgs[0].text.length > 30 ? "…" : "");
   const session = {
     id: currentSessionId,
     title,
@@ -32,7 +36,7 @@ function saveCurrentSession() {
     messages: chatMessages,
   };
 
-  const idx = sessions.findIndex(s => s.id === currentSessionId);
+  const idx = sessions.findIndex((s) => s.id === currentSessionId);
   if (idx >= 0) sessions[idx] = session;
   else sessions.unshift(session);
 
@@ -45,13 +49,21 @@ function startNewSession() {
   chatHistory = [];
   chatMessages = [];
   document.getElementById("chatMessages").innerHTML = "";
-  appendChatMsg("system", "안녕하세요. 질문사항이나 해결하고싶은것을 물어보세요.");
+  appendChatMsg(
+    "system",
+    "안녕하세요. 질문사항이나 해결하고싶은것을 물어보세요.",
+  );
 }
 
 // ── 팝업 토글 ──
 function toggleChat() {
   if (!gmailToken) {
-    Swal.fire({ icon: "info", title: "AI 채팅 이용 불가", text: "일반 로그인 시 AI 채팅 기능은 이용하실 수 없습니다.", confirmButtonColor: "#4f8ef7" });
+    Swal.fire({
+      icon: "info",
+      title: "AI 채팅 이용 불가",
+      text: "일반 로그인 시 AI 채팅 기능은 이용하실 수 없습니다.",
+      confirmButtonColor: "#4f8ef7",
+    });
     return;
   }
   const popup = document.getElementById("chatPopup");
@@ -88,14 +100,20 @@ function renderChatHistoryList() {
   list.innerHTML = "";
 
   if (sessions.length === 0) {
-    list.innerHTML = '<div class="chat-history-empty">저장된 대화가 없습니다.</div>';
+    list.innerHTML =
+      '<div class="chat-history-empty">저장된 대화가 없습니다.</div>';
     return;
   }
 
-  sessions.forEach(s => {
+  sessions.forEach((s) => {
     const item = document.createElement("div");
     item.className = "chat-history-item";
-    const date = new Date(s.time).toLocaleDateString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    const date = new Date(s.time).toLocaleDateString("ko-KR", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     item.innerHTML = `
       <div class="chat-history-item-title">${s.title}</div>
       <div class="chat-history-item-date">${date}</div>
@@ -107,7 +125,7 @@ function renderChatHistoryList() {
 
 function viewChatSession(sessionId) {
   const sessions = loadChatSessions();
-  const session = sessions.find(s => s.id === sessionId);
+  const session = sessions.find((s) => s.id === sessionId);
   if (!session) return;
 
   document.getElementById("chatHistoryPanel").style.display = "none";
@@ -115,7 +133,7 @@ function viewChatSession(sessionId) {
   const box = document.getElementById("chatMessages");
   box.innerHTML = `<div class="chat-session-label">📋 ${session.title} <button onclick="backToCurrentChat()" style="margin-left:8px;font-size:11px;padding:2px 7px;border-radius:8px;border:1px solid #ccc;background:#f5f5f5;cursor:pointer">← 현재 대화로</button></div>`;
 
-  session.messages.forEach(m => {
+  session.messages.forEach((m) => {
     const div = document.createElement("div");
     div.className = `chat-msg chat-msg-${m.role}`;
     div.innerHTML = m.text.replace(/\n/g, "<br>");
@@ -127,7 +145,7 @@ function viewChatSession(sessionId) {
 function backToCurrentChat() {
   const box = document.getElementById("chatMessages");
   box.innerHTML = "";
-  chatMessages.forEach(m => {
+  chatMessages.forEach((m) => {
     const div = document.createElement("div");
     div.className = `chat-msg chat-msg-${m.role}`;
     div.innerHTML = m.text.replace(/\n/g, "<br>");
@@ -147,6 +165,62 @@ function appendChatMsg(role, text) {
   if (role !== "system") chatMessages.push({ role, text });
 }
 
+// ── 에러 분류/관리 ──
+const CHAT_ERROR_TEXT = {
+  network:
+    "네트워크에 연결하지 못했습니다. 연결 상태를 확인 후 다시 시도해주세요.",
+  auth: "인증에 실패했습니다. 관리자에게 문의해주세요.",
+  quota: "사용량 한도를 초과했습니다. 잠시 후 다시 시도해주세요.",
+  invalid: "요청을 처리할 수 없습니다. 입력 내용을 확인해주세요.",
+  server: "서버에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+  unknown: "서비스에 문제가 발생했습니다.",
+};
+
+let chatErrorLog = []; // 최근 에러 20건 (디버깅용, console에서 chatErrorLog 확인)
+
+function classifyChatError(status) {
+  if (status === 400) return "invalid";
+  if (status === 401 || status === 403) return "auth";
+  if (status === 429) return "quota";
+  if (status >= 500) return "server";
+  return "unknown";
+}
+
+// 429 응답의 RetryInfo에서 재시도 대기시간(초) 추출
+function chatRetryDelay(data) {
+  const info = data?.error?.details?.find((d) =>
+    d["@type"]?.endsWith("RetryInfo"),
+  );
+  const sec = parseInt(info?.retryDelay, 10);
+  return Number.isFinite(sec) ? sec : null;
+}
+
+function handleChatError(kind, status, detail) {
+  const apiMsg = detail?.error?.message || detail?.message || null;
+
+  chatErrorLog.unshift({
+    time: new Date().toISOString(),
+    kind,
+    status,
+    message: apiMsg,
+  });
+  chatErrorLog = chatErrorLog.slice(0, 20);
+  console.error(
+    `[chat] ${kind}${status ? ` (HTTP ${status})` : ""}`,
+    apiMsg || detail,
+  );
+
+  let text = CHAT_ERROR_TEXT[kind] || CHAT_ERROR_TEXT.unknown;
+  if (kind === "quota") {
+    const sec = chatRetryDelay(detail);
+    if (sec)
+      text = `사용량 한도를 초과했습니다. ${sec}초 후 다시 시도해주세요.`;
+  }
+
+  appendChatMsg("system", text);
+  chatHistory.pop(); // 실패한 유저 턴은 대화 문맥에서 제외
+}
+
 // ── 메시지 전송 ──
 async function sendChat() {
   const input = document.getElementById("chatInput");
@@ -159,7 +233,7 @@ async function sendChat() {
 
   // API 키 없으면 서비스 준비중 안내
   if (!GEMINI_API_KEY) {
-    appendChatMsg("system", "🚧 죄송합니다. 현재 AI 채팅 서비스는 오픈 준비중입니다.");
+    appendChatMsg("system", "죄송합니다. 현재 서비스는 오픈 준비중입니다.");
     chatHistory.pop();
     return;
   }
@@ -170,8 +244,10 @@ async function sendChat() {
   document.getElementById("chatMessages").appendChild(thinkingEl);
   document.getElementById("chatMessages").scrollTop = 999999;
 
+  // 1) 네트워크 단계: fetch 자체가 실패하면 응답이 없음
+  let res;
   try {
-    const res = await fetch(
+    res = await fetch(
       `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: "POST",
@@ -179,21 +255,34 @@ async function sendChat() {
         body: JSON.stringify({ contents: chatHistory }),
       },
     );
-    const data = await res.json();
+  } catch (e) {
     thinkingEl.remove();
-
-    if (!res.ok) {
-      appendChatMsg("system", "🚧 AI 채팅 서비스 오픈 준비중입니다.");
-      chatHistory.pop();
-      return;
-    }
-
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "(응답 없음)";
-    chatHistory.push({ role: "model", parts: [{ text: reply }] });
-    appendChatMsg("model", reply);
-  } catch {
-    thinkingEl.remove();
-    appendChatMsg("system", "🚧 AI 채팅 서비스 오픈 준비중입니다.");
-    chatHistory.pop();
+    handleChatError("network", null, e);
+    return;
   }
+
+  // 2) 응답 본문 파싱 (에러 응답이 JSON이 아닐 수 있음)
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+  thinkingEl.remove();
+
+  // 3) HTTP 상태코드로 분류
+  if (!res.ok) {
+    handleChatError(classifyChatError(res.status), res.status, data);
+    return;
+  }
+
+  // 4) 200이지만 응답이 비어있는 경우 (safety 차단 등)
+  const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!reply) {
+    handleChatError("unknown", res.status, data);
+    return;
+  }
+
+  chatHistory.push({ role: "model", parts: [{ text: reply }] });
+  appendChatMsg("model", reply);
 }

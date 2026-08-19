@@ -20,6 +20,10 @@ CREATE TABLE IF NOT EXISTS memos (
   edited_at  DATETIME,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   deleted_at DATETIME DEFAULT NULL,
+  -- 목록/휴지통 조회용 (user_id + 삭제여부 + 정렬)
+  KEY idx_user_deleted_created (user_id, deleted_at, created_at),
+  -- 자정 영구삭제 cron 용 (deleted_at 단독 조건)
+  KEY idx_deleted_at (deleted_at),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
@@ -71,5 +75,11 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE TABLE IF NOT EXISTS sessions (
   session_id VARCHAR(128) NOT NULL PRIMARY KEY,
   expires    INT UNSIGNED NOT NULL,
-  data       MEDIUMTEXT
+  data       MEDIUMTEXT,
+  -- 15분마다 도는 만료 세션 정리(DELETE ... WHERE expires < ?)용
+  KEY idx_expires (expires)
 );
+
+-- 누락 인덱스 보정:
+--   node db/ensure-indexes.js  (또는 npm run db:indexes)
+-- 이미 운영 중인 DB 는 위 KEY 정의가 적용되지 않으므로 위 스크립트로 채운다.

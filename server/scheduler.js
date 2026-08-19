@@ -1,8 +1,19 @@
 const cron = require("node-cron");
 const db = require("./db");
+const { runBackup } = require("./db/backup");
+
+// ── DB 백업 Cron (매일 새벽 3시 30분) ──
+// 보관 기간은 BACKUP_RETENTION_DAYS(기본 7일), 저장 위치는 BACKUP_DIR 로 조절한다.
+const backupTask = cron.schedule("30 3 * * *", async () => {
+  try {
+    await runBackup();
+  } catch (e) {
+    console.error("DB 백업 실패:", e.message);
+  }
+});
 
 // ── 소프트 딜리트 메모 영구 삭제 Cron (매일 자정) ──
-cron.schedule("0 0 * * *", async () => {
+const memoCleanupTask = cron.schedule("0 0 * * *", async () => {
   try {
     const [result] = await db.query(
       `DELETE FROM memos WHERE deleted_at IS NOT NULL AND deleted_at <= NOW() - INTERVAL 15 DAY`
@@ -16,7 +27,7 @@ cron.schedule("0 0 * * *", async () => {
 });
 
 // ── 예약 메일 발송 Cron (매분 실행) ──
-cron.schedule("* * * * *", async () => {
+const scheduledMailTask = cron.schedule("* * * * *", async () => {
   try {
     // 1) pending → sending 으로 원자적 선점 (중복 발송 방지)
     await db.query(
@@ -93,3 +104,19 @@ cron.schedule("* * * * *", async () => {
     console.error("예약 메일 cron 오류:", e.message);
   }
 });
+
+// 종료 시 스케줄러를 멈추기 위해 태스크를 노출한다.
+async function stopAll() {
+  await Promise.allSettled([
+    memoCleanupTask.stop(),
+    scheduledMailTask.stop(),
+    backupTask.stop(),
+  ]);
+}
+
+module.exports = {
+  memoCleanupTask,
+  scheduledMailTask,
+  backupTask,
+  stopAll,
+};

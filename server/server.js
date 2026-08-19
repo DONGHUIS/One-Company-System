@@ -5,11 +5,25 @@ const MySQLStore = require("express-mysql-session")(session);
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const cors = require("cors");
-require("./scheduler");
+const compression = require("compression");
+const scheduler = require("./scheduler");
 const db = require("./db");
 
 const app = express();
-app.set("trust proxy", 1);
+
+// 앞단 프록시 단수를 실제보다 크게 잡으면 클라이언트가 X-Forwarded-For 를
+// 위조해 req.ip 를 속일 수 있다. 출퇴근의 사무실 IP 판정이 req.ip 에
+// 의존하므로, 실제 프록시 수에 맞춰 TRUST_PROXY_HOPS 로 조정할 것.
+// (프록시 없이 직접 노출한다면 0 으로 둬야 위조를 막는다)
+app.set("trust proxy", Number(process.env.TRUST_PROXY_HOPS ?? 1));
+
+// ── 응답 압축 ──
+app.use(compression());
+
+// ── 공통 보안 헤더 ──
+const { csrfOriginCheck, securityHeaders } = require("./middleware/security");
+const { serverError } = require("./middleware/errors");
+app.use(securityHeaders);
 
 // ── CORS ──
 app.use(
@@ -24,17 +38,33 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // ── 정적 파일 서빙 ──
+// 파일명에 해시가 없으므로 캐시 기간은 짧게 두고 ETag 재검증에 의존한다.
+// HTML은 항상 재검증(no-cache) → 배포 직후에도 최신 JS/CSS 참조가 보장된다.
 const path = require("path");
-app.use(express.static(path.join(__dirname, "../memo-app")));
+app.use(
+  express.static(path.join(__dirname, "../memo-app"), {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+      const ext = path.extname(filePath).toLowerCase();
+      if (ext === ".html") {
+        res.setHeader("Cache-Control", "no-cache");
+      } else if (ext === ".js" || ext === ".css") {
+        res.setHeader("Cache-Control", "public, max-age=300, must-revalidate");
+      } else {
+        // 이미지·폰트 등 거의 바뀌지 않는 정적 자산
+        res.setHeader("Cache-Control", "public, max-age=604800");
+      }
+    },
+  }),
+);
 
 // ── 세션 (MySQL 저장) ──
-const sessionStore = new MySQLStore({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT || 3306,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
-});
+// db/index.js 의 커넥션 풀을 그대로 재사용한다. 별도 옵션을 넘기면
+// express-mysql-session 이 자체 풀을 하나 더 만들어 커넥션이 두 배로 잡힌다.
+// 두 번째 인자로 연결을 넘기면 endConnectionOnClose 가 자동으로 false 가 되어
+// 세션 스토어를 닫아도 공용 풀은 유지된다.
+const sessionStore = new MySQLStore({}, db.pool);
 
 const sessionMiddleware = session({
   store: sessionStore,
@@ -44,7 +74,11 @@ const sessionMiddleware = session({
   cookie: {
     maxAge: 9 * 60 * 60 * 1000, // 9시간
     httpOnly: true,
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    // 프런트를 같은 출처에서 서비스하므로 lax 로 충분하다.
+    // lax 는 교차 사이트 POST 에 쿠키를 보내지 않아 CSRF 1차 방어가 된다.
+    // (none 은 이 방어를 꺼버린다. 프런트를 다른 도메인에 둘 때만
+    //  SESSION_SAMESITE=none 으로 바꾸고, 그 경우 secure 는 필수다)
+    sameSite: process.env.SESSION_SAMESITE || "lax",
     secure: process.env.NODE_ENV === "production",
   },
 });
@@ -53,6 +87,13 @@ app.use(sessionMiddleware);
 // ── Passport 초기화 ──
 app.use(passport.initialize());
 app.use(passport.session());
+
+// ── CSRF: 상태 변경 요청의 출처 검증 (라우터보다 먼저) ──
+app.use(csrfOriginCheck);
+
+// ── 게스트 계정은 초대받은 채팅 외 기능을 쓸 수 없다 ──
+const { blockGuests } = require("./middleware/auth");
+app.use(blockGuests);
 
 // ── Google OAuth 전략 ──
 passport.use(
@@ -159,6 +200,8 @@ passport.deserializeUser(async ({ id, accessToken }, done) => {
     is_read      TINYINT(1) DEFAULT 0,
     is_encrypted TINYINT(1) DEFAULT 0,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_room_created (room_id, created_at),
+    KEY idx_room_read (room_id, is_read, from_id),
     FOREIGN KEY (room_id)  REFERENCES chat_rooms(id) ON DELETE CASCADE,
     FOREIGN KEY (from_id)  REFERENCES users(id) ON DELETE CASCADE
   )`,
@@ -407,17 +450,30 @@ db.query(
 })();
 
 // ── 라우터 ──
+const {
+  aiLimiter,
+  uploadLimiter,
+  guestJoinLimiter,
+} = require("./middleware/rateLimit");
+
 app.use("/auth", require("./routes/auth"));
 app.use("/api/board", require("./routes/board"));
 app.use("/api/memos", require("./routes/memos"));
 app.use("/api", require("./routes/google"));
-app.use("/api/ai", require("./routes/ai"));
+app.use("/api/ai", aiLimiter, require("./routes/ai"));
 app.use("/api/local", require("./routes/localCalendar"));
 app.use("/api/gmail/scheduled", require("./routes/scheduledMail"));
 app.use("/api/share", require("./routes/share"));
 app.use("/api/report", require("./routes/report"));
 app.use("/api/attendance", require("./routes/attendance"));
 app.use("/api/minutes", require("./routes/meetingMinutes"));
+
+// ── 누락 인덱스 보정 (멱등, 실패해도 기동은 계속) ──
+// 신규 DB 는 CREATE TABLE 의 KEY 정의로 인덱스가 생기고,
+// 이미 운영 중인 DB 는 여기서 채워진다.
+require("./db/ensure-indexes")
+  .ensureIndexes()
+  .catch((e) => console.error("인덱스 점검 실패:", e.message));
 
 // ── 메모 엑셀 다운로드 (/api/memos/export/excel 로 위임) ──
 // routes/memos.js 의 GET /export/excel 에서 처리
@@ -510,7 +566,7 @@ app.get("/api/maps/transit", async (req, res) => {
     const data = await response.json();
     res.json(data);
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    serverError(res, e);
   }
 });
 
@@ -643,7 +699,7 @@ app.get("/api/chat/rooms/:roomId/messages", async (req, res) => {
 });
 
 // 파일 업로드
-app.post("/api/chat/upload", (req, res, next) => {
+app.post("/api/chat/upload", uploadLimiter, (req, res, next) => {
   if (!req.isAuthenticated())
     return res.status(401).json({ error: "미로그인" });
   upload.single("file")(req, res, (err) => {
@@ -974,7 +1030,8 @@ app.post("/api/chat/invite/:token/join", async (req, res) => {
 });
 
 // 게스트로 참여 (로그인 없이 이름만 입력)
-app.post("/api/chat/invite/:token/guest-join", async (req, res) => {
+// 비로그인 상태로 users 행을 만드는 유일한 경로라 레이트리밋이 필수다.
+app.post("/api/chat/invite/:token/guest-join", guestJoinLimiter, async (req, res) => {
   const [rows] = await db.query(
     `
     SELECT * FROM chat_invites
@@ -986,8 +1043,10 @@ app.post("/api/chat/invite/:token/guest-join", async (req, res) => {
     return res.status(400).json({ error: "유효하지 않은 초대 링크입니다" });
   const invite = rows[0];
 
-  const guestName = (req.body.guestName || "").trim();
+  const guestName = String(req.body.guestName || "").trim();
   if (!guestName) return res.status(400).json({ error: "이름을 입력하세요" });
+  if (guestName.length > 20)
+    return res.status(400).json({ error: "이름은 20자 이하로 입력하세요" });
 
   const uid = require("crypto").randomBytes(12).toString("hex");
   const [result] = await db.query(
@@ -1070,6 +1129,13 @@ app.post("/api/chat/rooms/:roomId/e2ee-keys", async (req, res) => {
     );
   }
   res.json({ ok: true });
+});
+
+// ── 전역 에러 핸들러 (모든 라우터 뒤에 위치해야 한다) ──
+app.use((err, req, res, next) => {
+  console.error(`요청 처리 오류 [${req.method} ${req.originalUrl}]:`, err);
+  if (res.headersSent) return next(err);
+  res.status(err.status || 500).json({ error: "서버 오류가 발생했습니다" });
 });
 
 // ── 서버 시작 (Socket.io) ──
@@ -1192,4 +1258,56 @@ io.on("connection", (socket) => {
 
 httpServer.listen(PORT, () => {
   console.log(`서버 실행 중: http://localhost:${PORT}`);
+});
+
+// ── Graceful shutdown ──
+// PM2 는 재시작/중지 시 SIGINT 을 보내고 kill_timeout 후 SIGKILL 한다.
+let shuttingDown = false;
+
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`${signal} 수신 → 종료 절차 시작`);
+
+  // 정리가 멈춰도 프로세스가 남지 않도록 강제 종료 타이머를 건다.
+  const forceExit = setTimeout(() => {
+    console.error("정상 종료 시간 초과 → 강제 종료");
+    process.exit(1);
+  }, 10_000);
+  forceExit.unref();
+
+  try {
+    await scheduler.stopAll(); // 새 cron 실행 중단
+    await new Promise((resolve) => io.close(resolve)); // 소켓 + httpServer 종료
+    await sessionStore.close();
+    await db.end(); // 공용 커넥션 풀 반납
+    console.log("정상 종료 완료");
+    clearTimeout(forceExit);
+    process.exit(0);
+  } catch (e) {
+    console.error("종료 처리 중 오류:", e);
+    process.exit(1);
+  }
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+// Windows 에서는 POSIX 시그널이 전달되지 않는다.
+// PM2 의 shutdown_with_message 옵션이 대신 IPC 메시지를 보낸다.
+process.on("message", (msg) => {
+  if (msg === "shutdown") shutdown("shutdown message");
+});
+
+// ── 프로세스 레벨 에러 핸들러 ──
+// 이전에는 소켓 핸들러의 await 실패 하나로 프로세스 전체가 내려갔다.
+process.on("unhandledRejection", (reason) => {
+  console.error("처리되지 않은 Promise 거부:", reason);
+});
+
+// uncaughtException 이후의 상태는 신뢰할 수 없으므로
+// 로그만 남기고 정상 종료 → PM2 가 재시작하게 한다.
+process.on("uncaughtException", (err) => {
+  console.error("처리되지 않은 예외:", err);
+  shutdown("uncaughtException");
 });

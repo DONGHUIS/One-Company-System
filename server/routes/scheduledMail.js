@@ -14,10 +14,15 @@ db.query(`
     raw_mime     MEDIUMTEXT NOT NULL,
     thread_id    VARCHAR(200),
     scheduled_at DATETIME NOT NULL,
-    status       ENUM('pending','sent','failed') DEFAULT 'pending',
+    -- 'sending' 은 scheduler.js 가 중복 발송 방지를 위해 선점할 때 쓰는 상태다.
+    -- 운영 DB 에는 ALTER 로 반영돼 있었으나 이 정의에 빠져 있어,
+    -- 신규 설치 시 선점 UPDATE 가 strict mode 에서 실패했다.
+    status       ENUM('pending','sending','sent','failed') DEFAULT 'pending',
     sent_at      DATETIME,
     error_msg    TEXT,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    -- 매분 도는 선점 UPDATE (WHERE status='pending' AND scheduled_at <= NOW())
+    KEY idx_status_scheduled (status, scheduled_at),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )
 `).catch((e) => console.error("scheduled_emails 테이블 생성 오류:", e.message));

@@ -1,6 +1,7 @@
 const router = require("express").Router();
 const db = require("../db");
 const { requireAuth } = require("../middleware/auth");
+const { aiLimiter } = require("../middleware/rateLimit");
 const writeLog = require("../db/audit");
 const Anthropic = require("@anthropic-ai/sdk");
 
@@ -168,7 +169,7 @@ router.delete("/:id", requireAuth, async (req, res) => {
 });
 
 // AI 요약
-router.post("/:id/summarize", requireAuth, async (req, res) => {
+router.post("/:id/summarize", requireAuth, aiLimiter, async (req, res) => {
   try {
     const [[minute]] = await db.query(
       `SELECT title, content, meeting_date, location FROM meeting_minutes WHERE id = ?`,

@@ -22,6 +22,10 @@ java-service/target/
 # Logs
 logs/
 
+# DB 백업 (덤프에 전체 데이터가 들어있으므로 절대 커밋 금지)
+backups/
+*.sql.gz
+
 # Sensitive / browser data
 pw-user-data/
 

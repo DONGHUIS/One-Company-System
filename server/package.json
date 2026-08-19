@@ -4,7 +4,16 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "pm2:start": "pm2 start ecosystem.config.js --env production",
+    "pm2:reload": "pm2 reload ecosystem.config.js --env production",
+    "pm2:stop": "pm2 stop memo-server",
+    "pm2:logs": "pm2 logs memo-server",
+    "pm2:status": "pm2 status",
+    "pm2:autostart": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/register-autostart.ps1",
+    "pm2:autostart:remove": "schtasks /delete /tn \"PM2 memo-server\" /f",
+    "db:backup": "node db/backup.js",
+    "db:indexes": "node db/ensure-indexes.js"
   },
   "keywords": [],
   "author": "",
@@ -13,11 +22,13 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
     "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.3.1",
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "express-mysql-session": "^3.0.3",
+    "express-rate-limit": "^8.6.1",
     "express-session": "^1.19.0",
     "multer": "^2.1.1",
     "mysql2": "^3.19.1",
@@ -25,5 +36,8 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "socket.io": "^4.8.3"
+  },
+  "devDependencies": {
+    "pm2": "^7.0.3"
   }
 }

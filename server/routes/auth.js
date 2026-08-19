@@ -3,6 +3,8 @@ const passport = require("passport");
 const bcrypt = require("bcrypt");
 const db = require("../db");
 const writeLog = require("../db/audit");
+const { serverError } = require("../middleware/errors");
+const { authLimiter } = require("../middleware/rateLimit");
 
 // Google 로그인 시작
 router.get("/google", (req, res, next) => {
@@ -57,12 +59,14 @@ router.post("/logout", (req, res) => {
 });
 
 // ── 일반 회원가입 ──
-router.post("/register", async (req, res) => {
+router.post("/register", authLimiter, async (req, res) => {
   const { name, email, password } = req.body;
   if (!name || !email || !password)
     return res.status(400).json({ error: "이름, 이메일, 비밀번호를 모두 입력하세요" });
-  if (password.length < 6)
-    return res.status(400).json({ error: "비밀번호는 6자 이상이어야 합니다" });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email)))
+    return res.status(400).json({ error: "올바른 이메일 형식이 아닙니다" });
+  if (password.length < 10)
+    return res.status(400).json({ error: "비밀번호는 10자 이상이어야 합니다" });
 
   try {
     const [existing] = await db.query("SELECT id FROM users WHERE email = ?", [email]);

@@ -154,17 +154,18 @@ async function runBackup({ verbose = false } = {}) {
   const removed = pruneOldBackups(dir, retentionDays);
 
   const kb = (bytes / 1024).toFixed(1);
-  console.log(
-    `DB 백업 완료: ${path.basename(outFile)} (${kb} KB)` +
-      (removed.length ? ` / 만료 백업 ${removed.length}건 삭제` : ""),
-  );
+  // 완료 로그는 호출자(스케줄러의 batchLog / 아래 CLI)가 남긴다.
+  const summary =
+    `${path.basename(outFile)} (${kb} KB)` +
+    (removed.length ? ` / 만료 백업 ${removed.length}건 삭제` : "");
   if (verbose) {
+    console.log(`DB 백업 완료: ${summary}`);
     console.log(`  경로: ${outFile}`);
     console.log(`  보관: ${retentionDays}일`);
     if (stderr.trim()) console.log(`  mysqldump 경고: ${stderr.trim()}`);
     removed.forEach((r) => console.log(`  삭제됨: ${r}`));
   }
-  return { file: outFile, bytes, removed };
+  return { file: outFile, bytes, removed, summary };
 }
 
 module.exports = { runBackup, pruneOldBackups, resolveMysqldump };

@@ -9,6 +9,7 @@
     "pm2:reload": "pm2 reload ecosystem.config.js --env production",
     "pm2:stop": "pm2 stop memo-server",
     "pm2:logs": "pm2 logs memo-server",
+    "logs:batch": "powershell -NoProfile -Command \"Get-Content ../logs/batch.log -Tail 50 -Wait\"",
     "pm2:status": "pm2 status",
     "pm2:autostart": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/register-autostart.ps1",
     "pm2:autostart:remove": "schtasks /delete /tn \"PM2 memo-server\" /f",

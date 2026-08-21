@@ -7,16 +7,7 @@ const { serverError } = require("../middleware/errors");
 const { authLimiter } = require("../middleware/rateLimit");
 
 // Google 로그인 시작
-router.get("/google", (req, res, next) => {
-  const origRedirect = res.redirect.bind(res);
-  res.redirect = function(url) {
-    console.log("Google로 리디렉션 URL:", url);
-    const u = new URL(url);
-    console.log("redirect_uri 파라미터:", u.searchParams.get("redirect_uri"));
-    return origRedirect(url);
-  };
-  next();
-}, passport.authenticate("google", {
+router.get("/google", passport.authenticate("google", {
   scope: [
     "profile",
     "email",
@@ -124,8 +115,9 @@ router.post("/local/change-password", async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword)
     return res.status(400).json({ error: "현재 비밀번호와 새 비밀번호를 입력하세요" });
-  if (newPassword.length < 6)
-    return res.status(400).json({ error: "새 비밀번호는 6자 이상이어야 합니다" });
+  // 가입 시 정책(10자 이상)과 동일하게 맞춘다.
+  if (newPassword.length < 10)
+    return res.status(400).json({ error: "새 비밀번호는 10자 이상이어야 합니다" });
 
   try {
     const match = await bcrypt.compare(currentPassword, req.user.password);

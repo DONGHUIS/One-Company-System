@@ -2,6 +2,14 @@
 // 브라우저 대신 서버가 Google API 호출 (토큰 노출 방지)
 const router = require("express").Router();
 const { requireAuth } = require("../middleware/auth");
+const { ensureGoogleToken } = require("../lib/googleTokens");
+
+// 이 라우터는 /api 전체에 마운트되므로, Google API 경로에서만
+// 액세스 토큰 만료 검사·갱신을 수행한다.
+const GOOGLE_PATHS = /^\/(gmail|drive|calendar|tasks)(\/|$)/;
+router.use((req, res, next) =>
+  GOOGLE_PATHS.test(req.path) ? ensureGoogleToken(req, res, next) : next(),
+);
 
 async function googleFetch(url, options, token) {
   return fetch(url, {

@@ -96,6 +96,12 @@ const { blockGuests } = require("./middleware/auth");
 app.use(blockGuests);
 
 // ── Google OAuth 전략 ──
+// 리프레시 토큰 저장용 컬럼 (없으면 추가)
+db.query(`ALTER TABLE users ADD COLUMN google_refresh_token TEXT NULL`).catch(
+  () => {},
+);
+const googleTokens = require("./lib/googleTokens");
+
 passport.use(
   new GoogleStrategy(
     {
@@ -103,7 +109,8 @@ passport.use(
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       callbackURL: process.env.GOOGLE_CALLBACK_URL,
     },
-    async (accessToken, refreshToken, profile, done) => {
+    // params.expires_in 으로 액세스 토큰 만료 시각을 계산해 세션에 함께 둔다.
+    async (accessToken, refreshToken, params, profile, done) => {
       try {
         const email = profile.emails[0].value;
         const domain = email.split("@")[1];
@@ -134,6 +141,15 @@ passport.use(
         ]);
         const user = rows[0];
         user.accessToken = accessToken;
+        user.tokenExpiresAt =
+          Date.now() + (Number(params?.expires_in) || 3600) * 1000;
+        // accessType=offline 이라 로그인 때마다 리프레시 토큰이 온다.
+        // 저장해 두면 액세스 토큰 만료(약 1시간) 후에도 갱신할 수 있다.
+        if (refreshToken) {
+          await googleTokens
+            .saveRefreshToken(user.id, refreshToken)
+            .catch((e) => console.error("리프레시 토큰 저장 실패:", e.message));
+        }
         return done(null, user);
       } catch (e) {
         console.error("OAuth DB 저장 오류:", e.message);
@@ -144,14 +160,19 @@ passport.use(
 );
 
 passport.serializeUser((user, done) => {
-  done(null, { id: user.id, accessToken: user.accessToken });
+  done(null, {
+    id: user.id,
+    accessToken: user.accessToken,
+    tokenExpiresAt: user.tokenExpiresAt,
+  });
 });
 
-passport.deserializeUser(async ({ id, accessToken }, done) => {
+passport.deserializeUser(async ({ id, accessToken, tokenExpiresAt }, done) => {
   try {
     const [rows] = await db.query(`SELECT * FROM users WHERE id=?`, [id]);
     if (!rows.length) return done(null, false);
     rows[0].accessToken = accessToken;
+    rows[0].tokenExpiresAt = tokenExpiresAt;
     done(null, rows[0]);
   } catch (e) {
     done(e);
@@ -901,6 +922,17 @@ app.post("/api/chat/messages/:messageId/reactions", async (req, res) => {
   if (!emoji) return res.status(400).json({ error: "emoji 필요" });
   const messageId = Number(req.params.messageId);
   const userId = req.user.id;
+  // 해당 메시지가 속한 방의 멤버만 반응할 수 있다.
+  const [msg] = await db.query(`SELECT room_id FROM messages WHERE id=?`, [
+    messageId,
+  ]);
+  if (!msg.length) return res.status(404).json({ error: "메시지 없음" });
+  const roomId = msg[0].room_id;
+  const [member] = await db.query(
+    `SELECT 1 FROM chat_room_members WHERE room_id=? AND user_id=?`,
+    [roomId, userId],
+  );
+  if (!member.length) return res.status(403).json({ error: "권한 없음" });
   const [ex] = await db.query(
     `SELECT id FROM message_reactions WHERE message_id=? AND user_id=? AND emoji=?`,
     [messageId, userId, emoji],
@@ -925,15 +957,10 @@ app.post("/api/chat/messages/:messageId/reactions", async (req, res) => {
      WHERE mr.message_id=? GROUP BY mr.emoji`,
     [messageId],
   );
-  const [msg] = await db.query(`SELECT room_id FROM messages WHERE id=?`, [
+  io.to(`room:${roomId}`).emit("reaction_updated", {
     messageId,
-  ]);
-  if (msg.length) {
-    io.to(`room:${msg[0].room_id}`).emit("reaction_updated", {
-      messageId,
-      reactions,
-    });
-  }
+    reactions,
+  });
   res.json({ reactions });
 });
 
@@ -1254,6 +1281,19 @@ io.on("connection", (socket) => {
     onlineUsers.delete(userId);
     io.emit("online_users", Array.from(onlineUsers.keys()));
   });
+});
+
+// 포트 충돌은 대부분 pm2 인스턴스가 이미 떠 있는 경우다.
+// uncaughtException 경로로 흘리면 종료 중 초기화 쿼리들이
+// "Pool is closed" 오류를 쏟아내므로, 여기서 안내만 남기고 바로 끝낸다.
+httpServer.on("error", (err) => {
+  if (err.code === "EADDRINUSE") {
+    console.error(
+      `포트 ${PORT} 가 이미 사용 중입니다. pm2 로 서버가 떠 있는지 확인하세요 (npm run pm2:status).`,
+    );
+    process.exit(1);
+  }
+  throw err;
 });
 
 httpServer.listen(PORT, () => {

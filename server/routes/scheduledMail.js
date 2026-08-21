@@ -18,14 +18,24 @@ db.query(`
     -- 운영 DB 에는 ALTER 로 반영돼 있었으나 이 정의에 빠져 있어,
     -- 신규 설치 시 선점 UPDATE 가 strict mode 에서 실패했다.
     status       ENUM('pending','sending','sent','failed') DEFAULT 'pending',
+    -- batch_id/claimed_at: 매분 틱이 자기 몫만 선점·발송하기 위한 표식.
+    -- 이게 없으면 발송이 1분을 넘길 때 다음 틱이 같은 행을 다시 집어
+    -- 같은 메일이 두 번 나간다.
+    batch_id     VARCHAR(36) DEFAULT NULL,
+    claimed_at   DATETIME DEFAULT NULL,
     sent_at      DATETIME,
     error_msg    TEXT,
     created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
     -- 매분 도는 선점 UPDATE (WHERE status='pending' AND scheduled_at <= NOW())
     KEY idx_status_scheduled (status, scheduled_at),
+    KEY idx_batch (batch_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
   )
 `).catch((e) => console.error("scheduled_emails 테이블 생성 오류:", e.message));
+
+// 기존 설치본에 컬럼이 없으면 추가
+db.query(`ALTER TABLE scheduled_emails ADD COLUMN batch_id VARCHAR(36) DEFAULT NULL`).catch(() => {});
+db.query(`ALTER TABLE scheduled_emails ADD COLUMN claimed_at DATETIME DEFAULT NULL`).catch(() => {});
 
 // 예약 등록
 router.post("/", requireAuth, async (req, res) => {

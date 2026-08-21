@@ -153,11 +153,29 @@ async function runBackup({ verbose = false } = {}) {
 
   const removed = pruneOldBackups(dir, retentionDays);
 
+  // 오프사이트 미러: BACKUP_MIRROR_DIR (NAS·동기화 폴더 등) 로 사본을 복사한다.
+  // 백업이 같은 디스크에만 있으면 디스크 장애 시 DB 와 백업이 함께 사라진다.
+  // 미러 실패는 본 백업의 성공을 깨지 않고 요약에 경고로만 남긴다.
+  let mirrorNote = "";
+  const mirrorDir = process.env.BACKUP_MIRROR_DIR;
+  if (mirrorDir) {
+    try {
+      fs.mkdirSync(mirrorDir, { recursive: true });
+      fs.copyFileSync(outFile, path.join(mirrorDir, path.basename(outFile)));
+      pruneOldBackups(mirrorDir, retentionDays);
+      mirrorNote = " / 미러 복사 완료";
+    } catch (e) {
+      console.error("백업 미러 복사 실패:", e.message);
+      mirrorNote = ` / 미러 복사 실패: ${e.message}`;
+    }
+  }
+
   const kb = (bytes / 1024).toFixed(1);
   // 완료 로그는 호출자(스케줄러의 batchLog / 아래 CLI)가 남긴다.
   const summary =
     `${path.basename(outFile)} (${kb} KB)` +
-    (removed.length ? ` / 만료 백업 ${removed.length}건 삭제` : "");
+    (removed.length ? ` / 만료 백업 ${removed.length}건 삭제` : "") +
+    mirrorNote;
   if (verbose) {
     console.log(`DB 백업 완료: ${summary}`);
     console.log(`  경로: ${outFile}`);

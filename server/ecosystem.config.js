@@ -40,5 +40,32 @@ module.exports = {
         NODE_ENV: "production",
       },
     },
+
+    // ── ngrok 터널 ──
+    // 외부 접속용 고정 도메인 터널. 서버(4000)와 함께 상시 떠 있어야 하며,
+    // pm2 save 에 포함되어 로그온 시 pm2-resurrect 로 같이 복구된다.
+    // 도메인은 .env(FRONTEND_URL·GOOGLE_CALLBACK_URL)와 반드시 일치해야 한다.
+    {
+      name: "ngrok-tunnel",
+      script:
+        "C:\\Users\\happytalk\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\\ngrok.exe",
+      args:
+        "http --domain=euphonic-henriette-unousted.ngrok-free.dev 4000 --log stdout",
+      interpreter: "none", // node 스크립트가 아닌 실행 파일
+      instances: 1,
+      exec_mode: "fork",
+
+      // 부팅 직후 네트워크가 아직 없으면 ngrok 이 바로 종료된다.
+      // 지수 백오프로 재시도해 재시작 횟수 소진을 막는다.
+      autorestart: true,
+      exp_backoff_restart_delay: 5000,
+      max_restarts: 50,
+      min_uptime: "30s",
+
+      out_file: "../logs/ngrok-out.log",
+      error_file: "../logs/ngrok-error.log",
+      merge_logs: true,
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
+    },
   ],
 };

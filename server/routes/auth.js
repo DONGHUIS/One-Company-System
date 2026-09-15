@@ -13,6 +13,10 @@ router.get("/google", passport.authenticate("google", {
     "email",
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
+    // 임시보관함 초안 생성용 (Jira 로그인 문의 자동 초안)
+    "https://www.googleapis.com/auth/gmail.compose",
+    // 처리 완료 라벨 부착용 (스마트택배 문의 자동 초안) — 추가 후 재로그인 필요
+    "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/drive",
     "https://www.googleapis.com/auth/calendar.events",
     "https://www.googleapis.com/auth/tasks",

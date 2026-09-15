@@ -83,3 +83,14 @@ CREATE TABLE IF NOT EXISTS sessions (
 -- 누락 인덱스 보정:
 --   node db/ensure-indexes.js  (또는 npm run db:indexes)
 -- 이미 운영 중인 DB 는 위 KEY 정의가 적용되지 않으므로 위 스크립트로 채운다.
+
+-- Jira 로그인 문의 자동 초안 처리 기록 (lib/autoDraft.js 가 런타임에 자동 생성)
+CREATE TABLE IF NOT EXISTS auto_draft_logs (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  gmail_msg_id VARCHAR(32) NOT NULL UNIQUE,
+  user_id      INT NOT NULL,
+  status       ENUM('processing','drafted','skipped','failed') NOT NULL DEFAULT 'processing',
+  to_addr      VARCHAR(255),
+  detail       VARCHAR(500),
+  created_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+);

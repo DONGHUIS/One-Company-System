@@ -5,6 +5,8 @@ const db = require("./db");
 const { runBackup } = require("./db/backup");
 const batchLog = require("./lib/batchLog");
 const { getFreshAccessToken } = require("./lib/googleTokens");
+const { runAutoDraft } = require("./lib/autoDraft");
+const { runSweettrackerDraft } = require("./lib/sweettrackerDraft");
 
 // ── DB 백업 Cron (매일 새벽 3시 30분) ──
 // 보관 기간은 BACKUP_RETENTION_DAYS(기본 7일), 저장 위치는 BACKUP_DIR 로 조절한다.
@@ -202,11 +204,48 @@ const scheduledMailTask = cron.schedule(
   )
 );
 
+// ── Jira 로그인 문의 자동 초안 Cron (5분마다) ──
+// [Jira] 알림 메일에서 "로그인 문의"를 찾아 이미지 속 사용자 이메일을 추출,
+// 지정 답변(config/autoDraft.js)을 임시보관함 초안으로 만든다. 자동 발송은 하지 않는다.
+// quiet: 새 메일이 없었던 실행은 기록하지 않는다.
+const autoDraftTask = cron.schedule(
+  "*/5 * * * *",
+  batchLog.wrapJob("Jira초안", runAutoDraft, { quiet: true })
+);
+
+// ── 스마트택배 로그인 문의 자동 초안 Cron (10분마다) ──
+// "스마트택배 문의처리" 라벨의 미읽음 메일에서 로그인 문의를 찾아 쇼핑몰별
+// 분기 답변(config/sweettrackerDraft.js)을 답장 초안으로 만든다. 발송하지 않는다.
+// help 메일함의 리프레시 토큰이 저장되기 전에는 조용히 건너뛴다 (기동 후 1회만 로그).
+let sweettrackerTokenWarned = false;
+const sweettrackerTask = cron.schedule(
+  "*/10 * * * *",
+  batchLog.wrapJob(
+    "스마트택배초안",
+    async () => {
+      try {
+        const { summary } = await runSweettrackerDraft();
+        return summary.startsWith("처리할 새 메일 없음") ? null : summary;
+      } catch (e) {
+        if (/리프레시 토큰|Google 연동/.test(e.message)) {
+          if (!sweettrackerTokenWarned) {
+            sweettrackerTokenWarned = true;
+            batchLog.log("스마트택배초안", `대기 중 (토큰 저장 전): ${e.message}`);
+          }
+          return null;
+        }
+        throw e;
+      }
+    },
+    { quiet: true }
+  )
+);
+
 // 서버 기동 시점을 배치 로그에 남긴다.
 // "백업이 안 돌았다 = 그 시각에 서버가 죽어 있었다"를 이 파일만으로 판별할 수 있다.
 batchLog.log(
   "스케줄러",
-  "등록 완료 — DB백업(매일 03:30), 메모정리(매일 00:00), 업로드정리(매일 04:00), 예약메일(매분)"
+  "등록 완료 — DB백업(매일 03:30), 메모정리(매일 00:00), 업로드정리(매일 04:00), 예약메일(매분), Jira초안(5분), 스마트택배초안(10분)"
 );
 
 // 종료 시 스케줄러를 멈추기 위해 태스크를 노출한다.
@@ -216,6 +255,8 @@ async function stopAll() {
     scheduledMailTask.stop(),
     uploadCleanupTask.stop(),
     backupTask.stop(),
+    autoDraftTask.stop(),
+    sweettrackerTask.stop(),
   ]);
 }
 
@@ -224,5 +265,7 @@ module.exports = {
   scheduledMailTask,
   uploadCleanupTask,
   backupTask,
+  autoDraftTask,
+  sweettrackerTask,
   stopAll,
 };
